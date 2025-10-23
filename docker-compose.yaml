@@ -3,7 +3,7 @@ services:
   # Kafka in KRaft mode (no ZooKeeper)
   # ---------------------------------------------------
   kafka:
-    image: confluentinc/cp-kafka:7.7.0
+    image: confluentinc/cp-kafka:7.8.3
     container_name: kafka
     ports:
       - "9092:9092"  # client connection
@@ -36,8 +36,8 @@ services:
     container_name: postgres
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: sportsai
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: goalie
     ports:
       - "5432:5432"
     volumes:
@@ -54,7 +54,7 @@ services:
     depends_on:
       - postgres
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@local
+      PGADMIN_DEFAULT_EMAIL: admin@local.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
