@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Goalie Test Harness</title>
+    <title>Goalie Test Harness (Simple)</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
+        /* ... (Your styles are unchanged) ... */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; max-width: 1200px; margin: auto; }
         div { border: 1px solid #ccc; border-radius: 8px; padding: 16px; }
         h2 { margin-top: 0; }
@@ -21,7 +22,6 @@
     </style>
 </head>
 <body>
-
     <div>
         <h2>1. Authentication</h2>
         <input type="email" id="email" value="test@user.com"><br>
@@ -45,95 +45,91 @@
     </div>
 
     <script>
-        // --- 0. State ---
-        let jwtToken = null;
-        let currentMatchId = null;
-        
-        const socket = io("http://localhost:8000");
+        // NEW LINE: Wait for the HTML document to be fully loaded
+        document.addEventListener("DOMContentLoaded", () => {
 
-        socket.on("connect", () => {
-            console.log("Connected to WebSocket server!");
-        });
+            // --- 0. State ---
+            let jwtToken = null;
+            let currentMatchId = null;
+            const socket = io("http://localhost:8000");
 
-        // --- 1. Auth Logic ---
-        document.getElementById("loginBtn").onclick = async () => {
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            const res = await fetch("http://localhost:8000/api/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password })
+            socket.on("connect", () => console.log("Connected!"));
+
+            // --- 1. Auth Logic ---
+            document.getElementById("loginBtn").onclick = async () => {
+                const email = document.getElementById("email").value;
+                const password = document.getElementById("password").value;
+                const res = await fetch("http://localhost:8000/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    jwtToken = data.access_token;
+                    document.getElementById("token").innerText = jwtToken;
+                    alert("Login Successful!");
+                } else {
+                    alert("Login Failed");
+                }
+            };
+
+            // --- 2. Get Matches Logic ---
+            const fetchMatches = async (url) => {
+                if (!jwtToken) {
+                    alert("You must log in first!");
+                    return;
+                }
+                const res = await fetch(url, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+                const matches = await res.json();
+                const container = document.getElementById("matches");
+                container.innerHTML = "";
+                matches.forEach(match => {
+                    const el = document.createElement("div");
+                    el.className = "match";
+                    el.innerHTML = `
+                        <img src="${match.home_team_logo}" alt="${match.home_team_name}"> ${match.home_team_name} 
+                        vs 
+                        <img src="${match.away_team_logo}" alt="${match.away_team_name}"> ${match.away_team_name}
+                        <i>(${match.status})</i>
+                    `;
+                    el.onclick = () => joinMatch(match.match_id);
+                    container.appendChild(el);
+                });
+            };
+            document.getElementById("getLiveBtn").onclick = () => fetchMatches("http://localhost:8000/api/matches/all?status=live");
+            document.getElementById("getFavsBtn").onclick = () => fetchMatches("http://localhost:8000/api/matches/favorites");
+
+            // --- 3. Live Stream Logic ---
+            const joinMatch = (matchId) => {
+                if (currentMatchId) leaveMatch();
+                console.log(`Join: ${matchId}`);
+                socket.emit("join_match", { match_id: matchId });
+                currentMatchId = matchId;
+                document.getElementById("watching").innerText = currentMatchId;
+                document.getElementById("leaveBtn").disabled = false;
+            };
+            const leaveMatch = () => {
+                if (!currentMatchId) return;
+                console.log(`Leave: ${currentMatchId}`);
+                socket.emit("leave_match", { match_id: currentMatchId });
+                currentMatchId = null;
+                document.getElementById("watching").innerText = "None";
+                document.getElementById("leaveBtn").disabled = true;
+            };
+            document.getElementById("leaveBtn").onclick = leaveMatch;
+
+            // Listen ONLY for snippets
+            socket.on("snippets", (data) => {
+                console.log("Snippet:", data);
+                const el = document.createElement("p");
+                el.innerHTML = `<strong>${data.match_id}</strong>: ${data.snippet}`;
+                document.getElementById("snippets").prepend(el);
             });
-            if (res.ok) {
-                const data = await res.json();
-                jwtToken = data.access_token;
-                document.getElementById("token").innerText = jwtToken;
-                alert("Login Successful!");
-            } else {
-                alert("Login Failed");
-            }
-        };
 
-        // --- 2. Get Matches Logic ---
-        const fetchMatches = async (url) => {
-            if (!jwtToken) {
-                alert("You must log in first!");
-                return;
-            }
-            const res = await fetch(url, {
-                headers: { "Authorization": `Bearer ${jwtToken}` }
-            });
-            const matches = await res.json();
-            const container = document.getElementById("matches");
-            container.innerHTML = "";
-            matches.forEach(match => {
-                const el = document.createElement("div");
-                el.className = "match";
-                el.innerHTML = `
-                    <img src="${match.home_team_logo}" alt="${match.home_team_name}"> ${match.home_team_name} 
-                    vs 
-                    <img src="${match.away_team_logo}" alt="${match.away_team_name}"> ${match.away_team_name}
-                    <i>(${match.status})</i>
-                `;
-                el.onclick = () => joinMatch(match.match_id);
-                container.appendChild(el);
-            });
-        };
-        document.getElementById("getLiveBtn").onclick = () => fetchMatches("http://localhost:8000/api/matches/all?status=live");
-        document.getElementById("getFavsBtn").onclick = () => fetchMatches("http://localhost:8000/api/matches/favorites");
-
-        // --- 3. Live Stream Logic ---
-        const joinMatch = (matchId) => {
-            if (currentMatchId) {
-                leaveMatch(); // Leave previous match first
-            }
-            console.log(`Sending 'join_match' for: ${matchId}`);
-            socket.emit("join_match", { match_id: matchId });
-            currentMatchId = matchId;
-            document.getElementById("watching").innerText = currentMatchId;
-            document.getElementById("leaveBtn").disabled = false;
-        };
-        
-        const leaveMatch = () => {
-            if (!currentMatchId) return;
-            console.log(`Sending 'leave_match' for: ${currentMatchId}`);
-            socket.emit("leave_match", { match_id: currentMatchId });
-            currentMatchId = null;
-            document.getElementById("watching").innerText = "None";
-            document.getElementById("leaveBtn").disabled = true;
-        };
-        document.getElementById("leaveBtn").onclick = leaveMatch;
-
-        // Listen for new snippets
-        socket.on("snippets", (data) => {
-            console.log("Got snippet:", data);
-            const el = document.createElement("p");
-            el.innerHTML = `<strong>${data.match_id}</strong>: ${data.snippet}`;
-            document.getElementById("snippets").prepend(el);
-        });
-
-        // [REMOVED] The 'match_events' listener is gone
-
+        }); // NEW LINE: Close the DOMContentLoaded listener
     </script>
 </body>
 </html>

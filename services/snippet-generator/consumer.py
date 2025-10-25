@@ -2,7 +2,6 @@ from confluent_kafka import Consumer, Producer
 import json, os, time
 from collections import defaultdict
 import google.generativeai as genai
-import redis # <-- New import
 
 # --- Kafka & Gemini Config ---
 CLASSIFIED_TOPIC = "classified_commentary"
@@ -10,25 +9,13 @@ SNIPPET_TOPIC = "snippets"
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 consumer_conf = {
-    "bootstrap.servers": "127.0.0.1:9092", # [FIX] Changed from localhost
+    "bootstrap.servers": "127.0.0.1:9092",
     "group.id": "snippet-generator",
     "auto.offset.reset": "earliest"
 }
 consumer = Consumer(consumer_conf)
 consumer.subscribe([CLASSIFIED_TOPIC])
-producer = Producer({"bootstrap.servers": "127.0.0.1:9092"}) # [FIX] Changed from localhost
-
-# --- NEW: Connect to Redis ---
-try:
-    # [FIX] Changed from localhost
-    redis_client = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
-    redis_client.ping()
-    print("[REDIS] Snippet-Gen connected to Redis at 127.0.0.1:6379")
-except Exception as e:
-    print(f"[REDIS ERROR] Snippet-Gen could not connect: {e}")
-    redis_client = None
-
-# ... (The rest of your snippet-generator file is correct) ...
+producer = Producer({"bootstrap.servers": "127.0.0.1:9092"})
 
 # --- Batching Config ---
 batches = defaultdict(list)
@@ -39,7 +26,7 @@ BATCH_SIZE_LIMIT = 3 # Flush when batch reaches this size
 def generate_snippet(texts):
     print(f"[GEMINI] Calling API with {len(texts)} lines...")
     prompt = "You are a real-time sports reporter. Turn the following live commentary lines into one single, exciting news snippet. Be concise.\n\nCOMMENTARY:\n" + "\n".join(texts)
-    model = genai.GenerativeModel("gemini-1.5-flash") 
+    model = genai.GenerativeModel("gemini-2.5-flash") 
     try:
         response = model.generate_content(prompt)
         return response.text.strip()
@@ -55,24 +42,12 @@ def should_flush_size(match_id):
 
 def flush_batch(match_id):
     texts = batches.get(match_id)
-    if not texts:
-        return
+    if not texts: return
 
-    active_watchers = 0
-    if redis_client:
-        watch_count = redis_client.get(f"watchers:{match_id}")
-        if watch_count:
-            active_watchers = int(watch_count)
-            
-    if active_watchers == 0:
-        print(f"\n[BATCH DROP] Skipping snippet for {match_id}. No active watchers.")
-        batches[match_id] = [] 
-        last_flush[match_id] = time.time()
-        return
-
-    print(f"\n[BATCH FLUSH] Flushing batch for {match_id} ({len(texts)} items, {active_watchers} watchers)...")
+    # --- NO REDIS CHECK - ALWAYS GENERATE ---
+    print(f"\n[BATCH FLUSH] Flushing batch for {match_id} ({len(texts)} items)...")
     
-    snippet = generate_snippet(texts)
+    snippet = generate_snippet(texts) # Call Gemini
     out_msg = {
         "match_id": match_id,
         "snippet": snippet,
