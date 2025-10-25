@@ -1,0 +1,43 @@
+{
+  "EP25001": [
+    { "minute": "1'", "line": "And we are underway! Chelsea get the match started. The roar from the Parisian ultras is deafening." },
+  { "minute": "2'", "line": "Enzo clips a ball towards Reece James, but Nuno Mendes is up quickly to head it back into the Chelsea half." },
+  { "minute": "3'", "line": "Chelsea's tactical shape is apparent. As Colwill carries the ball forward, Cucurella drifts inside to create a numerical advantage in the middle." },
+  { "minute": "4'", "line": "First sign of danger! Vitinha slides a pass into the channel for Mbappé... but the flag is up. Just offside. A warning shot fired." },
+  { "minute": "5'", "line": "Cole Palmer gets his first touches, drifting inside. He tries to nutmeg Ugarte, but the Uruguayan stands his ground." },
+  { "minute": "6'", "line": "Dembélé whips in a dangerous cross towards the near post. Colwill does brilliantly to get in front of his man and head it clear." },
+  { "minute": "7'", "line": "Chelsea are living dangerously. Vitinha nicks the ball off Caicedo! It breaks for Zaïre-Emery on the edge of the box! He shoots! Blocked by Fofana!" },
+  { "minute": "8'", "line": "Dembélé's corner finds Marquinhos, who rises highest! His powerful header is straight at Petrovic, who holds on securely." },
+  { "minute": "9'", "line": "A moment of respite for Chelsea. Jackson draws a foul from Beraldo. Enzo takes it quickly with a 50-yard diagonal to Reece James." },
+  { "minute": "10'", "line": "James drives forward and beats Mendes, but Vitinha has tracked back an incredible distance to slide in and block the cross for a corner." },
+  { "minute": "11'", "line": "Chelsea work a short corner. Mudryk receives the ball inside the box but his first-time shot is wild, high and wide. A wasted opportunity." },
+  { "minute": "12'", "line": "PSG are patient now, moving the ball across the backline, trying to draw Chelsea's press out." },
+  { "minute": "13'", "line": "Magic from Dembélé! He jinks past Cucurella and cuts it back low across the six-yard box. Colwill just gets a vital touch to divert it away from Kolo Muani." },
+  { "minute": "14'", "line": "Chelsea break! Nkunku feeds Jackson, who cuts inside and curls a shot towards the far corner... it's just wide of the post! Donnarumma was scrambling." },
+  { "minute": "15'", "line": "Hakimi flies down the right and delivers a cross. It falls to Mbappé at the back post, but he slices his volley. A rare miscue." },
+  { "minute": "16'", "line": "Petrovic rolls it to Enzo, who clips a perfectly-weighted pass over the top for Mudryk's run, but Hakimi matches him for pace." },
+  { "minute": "17'", "line": "Mbappé drops deep. He lays it off to Vitinha and spins in behind, but Fofana reads it superbly and intercepts." },
+  { "minute": "18'", "line": "GOAL FOR PSG! A lightning counter-attack! Vitinha slides an inch-perfect through ball to Mbappé, who is one-on-one and curls it with devastating precision into the far bottom corner." },
+  { "minute": "19'", "line": "Chelsea look shell-shocked. That is the danger you face here. One slip in concentration, and you are punished." },
+  { "minute": "20'", "line": "YELLOW CARD! Moisés Caicedo goes into the book for cynically pulling back Dembélé to prevent a counter-attack." },
+  { "minute": "21'", "line": "PSG are buzzing. Zaïre-Emery glides past two challenges and switches play to Mendes, but Reece James is alert to the danger." },
+  { "minute": "22'", "line": "Chelsea manage to string a sequence of passes together, trying to draw the sting out of the game and regain their composure." },
+  { "minute": "23'", "line": "Good play from Chelsea! Jackson's shot is blocked by Marquinhos. The rebound falls to Mudryk, but his effort is comfortable for Donnarumma." },
+  { "minute": "24'", "line": "Hakimi gets to the byline again and crosses. Kolo Muani leaps and heads it down... but Petrovic is there to smother it!" },
+  { "minute": "25'", "line": "A lull in the action as Nuno Mendes receives some treatment. A chance for both teams to take on instructions." },
+  { "minute": "26'", "line": "Mendes is back on his feet and we are back underway. Chelsea have possession, trying to build from the back again." },
+  { "minute": "27'", "line": "Enzo shows his class. Under pressure, he spins away from Vitinha and pings a 60-yard pass to the chest of Reece James." },
+  { "minute": "28'", "line": "James drives at Mendes and finds Nkunku, but Beraldo is sharp and steps in to intercept." },
+  { "minute": "29'", "line": "CHANCE FOR CHELSEA! Oh, they should be level! Palmer slides a defense-splitting pass to Jackson. He only has Donnarumma to beat... but the keeper makes himself huge and saves with his outstretched leg!" },
+  { "minute": "30'", "line": "From the corner, the ball is cleared to Caicedo. He strikes it on the half-volley from 25 yards... it flies a yard over the bar." }
+  ],
+  "LL25001": [
+    { "minute": "1'", "line": "El Clásico is underway in Madrid! This match is scheduled for tomorrow but we're simulating it." },
+    { "minute": "4'", "line": "Bellingham and Gavi in an early midfield tussle." },
+    { "minute": "6'", "line": "GOAL! Real Madrid! Vinícius Jr. breaks free and slots it past the keeper!" }
+  ],
+  "BL25001": [
+    { "minute": "1'", "line": "Kick-off in Munich for this completed match." },
+    { "minute": "90'", "line": "And that's the full-time whistle! Bayern won 3-0." }
+  ]
+}

@@ -1,0 +1,6 @@
+python services/model-service/consumer.py
+
+python services/snippet-generator/consumer.py
+python services/api-service/api_server.py
+
+python services/api-service/stateful_producer.py

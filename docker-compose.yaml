@@ -76,6 +76,13 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER: ""  # Not used in KRaft
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    
 volumes:
   kafka-data:
   pg-data:
