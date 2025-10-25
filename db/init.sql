@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS teams (
     id VARCHAR(10) PRIMARY KEY, -- Changed from SERIAL
     name VARCHAR(100) NOT NULL,
-    league VARCHAR(50) NOT NULL
+    league VARCHAR(50) NOT NULL,
+    logo_url VARCHAR(255) NOT NULL
 );
 
 -- Matches table (Changed match_id and team references to VARCHAR)
@@ -34,12 +35,12 @@ CREATE TABLE IF NOT EXISTS user_favorites (
 -- --- SAMPLE DATA ---
 
 -- Insert sample teams
-INSERT INTO teams (id, name, league) VALUES
-('E001', 'Manchester United', 'Premier League'),
-('E002', 'Liverpool', 'Premier League'),
-('L001', 'Real Madrid', 'La Liga'),
-('L002', 'Barcelona', 'La Liga'),
-('B001', 'Bayern Munich', 'Bundesliga');
+INSERT INTO teams (id, name, league, logo_url) VALUES
+('E001', 'Manchester United', 'Premier League','https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/1200px-Manchester_United_FC_crest.svg.png'),
+('E002', 'Liverpool', 'Premier League','https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC_logo.svg/1200px-Liverpool_FC_logo.svg.png'),
+('L001', 'Real Madrid', 'La Liga','https://upload.wikimedia.org/wikipedia/en/thumb/5/51/Real_Madrid_CF.svg/1200px-Real_Madrid_CF.svg.png'),
+('L002', 'Barcelona', 'La Liga','https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona.svg/1200px-FC_Barcelona.svg.png'),
+('B001', 'Bayern Munich', 'Bundesliga','https://upload.wikimedia.org/wikipedia/en/thumb/1/1c/FC_Bayern_Munich_logo.svg/1200px-FC_Bayern_Munich_logo.svg.png');
 
 -- Insert sample users (plaintext passwords)
 INSERT INTO users (username, email, password) VALUES
