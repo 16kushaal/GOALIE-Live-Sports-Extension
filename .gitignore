@@ -1,4 +1,16 @@
-.env
-.venv/
+# Python
 __pycache__/
-**/.env
+*.pyc
+.env
+venv/
+.venv/
+
+# Docker
+docker_data/
+kafka_kraft_data/
+postgres_data/
+pgadmin_data/
+
+# OS-specific
+.DS_Store
+Thumbs.db

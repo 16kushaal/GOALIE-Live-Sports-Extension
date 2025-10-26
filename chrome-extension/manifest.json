@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Live Football Snippets",
+  "version": "0.1.0",
+  "description": "Follow live football matches with 20-word snippets.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.jpg"
+  },
+  "permissions": [
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:5000/"
+  ]
+}

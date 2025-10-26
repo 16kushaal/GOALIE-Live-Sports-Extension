@@ -1,61 +1,51 @@
--- Users table (Plaintext Password)
-CREATE TABLE IF NOT EXISTS users (
+-- Set ID columns to appropriate VARCHAR lengths
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL, -- Plaintext password column
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL
 );
 
--- Teams table
-CREATE TABLE IF NOT EXISTS teams (
-    id VARCHAR(10) PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    league VARCHAR(50) NOT NULL,
-    logo_url TEXT -- Added logo URL
+CREATE TABLE leagues (
+    id VARCHAR(3) PRIMARY KEY, -- EP, LL, BL
+    name TEXT NOT NULL
 );
 
--- Matches table
-CREATE TABLE IF NOT EXISTS matches (
-    match_id VARCHAR(20) PRIMARY KEY,
+CREATE TABLE teams (
+    id VARCHAR(10) PRIMARY KEY, -- EP001, LL001
+    name TEXT NOT NULL,
+    league_id VARCHAR(3) REFERENCES leagues(id)
+);
+
+CREATE TABLE matches (
+    id VARCHAR(10) PRIMARY KEY, -- EP25001
     home_team_id VARCHAR(10) REFERENCES teams(id),
     away_team_id VARCHAR(10) REFERENCES teams(id),
-    league VARCHAR(50),
-    start_time TIMESTAMPTZ,
-    status VARCHAR(20) DEFAULT 'scheduled'
+    match_time TIMESTAMPTZ NOT NULL,
+    status TEXT NOT NULL DEFAULT 'SCHEDULED',
+    score TEXT
 );
 
--- User favorites
-CREATE TABLE IF NOT EXISTS user_favorites (
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    team_id VARCHAR(10) REFERENCES teams(id) ON DELETE CASCADE,
-    PRIMARY KEY(user_id, team_id)
+CREATE TABLE user_favorite_teams (
+    user_id INT REFERENCES users(id),
+    team_id VARCHAR(10) REFERENCES teams(id),
+    PRIMARY KEY (user_id, team_id)
 );
 
--- --- INDEXES ---
-CREATE INDEX IF NOT EXISTS idx_matches_status_start_time ON matches(status, start_time);
-CREATE INDEX IF NOT EXISTS idx_user_favorites_team_id ON user_favorites(team_id);
+-- Insert sample data with new IDs
+INSERT INTO leagues (id, name) VALUES 
+('EP', 'English Premier League'), 
+('LL', 'LaLiga'), 
+('BL', 'Bundesliga');
 
--- --- SAMPLE DATA ---
+INSERT INTO teams (id, name, league_id) VALUES 
+('EP001', 'Arsenal', 'EP'), 
+('EP002', 'Man City', 'EP'), 
+('LL001', 'Real Madrid', 'LL'), 
+('LL002', 'Barcelona', 'LL'),
+('BL001', 'Bayern Munich', 'BL');
 
--- Teams
-INSERT INTO teams (id, name, league, logo_url) VALUES
-('E001', 'Manchester United', 'Premier League', 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/1200px-Manchester_United_FC_crest.svg.png'),
-('E002', 'Liverpool', 'Premier League', 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/1200px-Liverpool_FC.svg.png'),
-('L001', 'Real Madrid', 'La Liga', 'https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Real_Madrid_CF.svg/1200px-Real_Madrid_CF.svg.png'),
-('L002', 'Barcelona', 'La Liga', 'https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_%28crest%29.svg/1200px-FC_Barcelona_%28crest%29.svg.png'),
-('B001', 'Bayern Munich', 'Bundesliga', 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/1200px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png');
-
--- Users (Password 'password123' plaintext)
-INSERT INTO users (username, email, password) VALUES
-('testuser', 'test@user.com', 'password123');
-
--- Matches
-INSERT INTO matches (match_id, home_team_id, away_team_id, league, start_time, status) VALUES
-('EP25001', 'E001', 'E002', 'Premier League', NOW() - INTERVAL '1 hour', 'live'),
-('LL25001', 'L001', 'L002', 'La Liga', NOW() + INTERVAL '1 day', 'scheduled'),
-('BL25001', 'B001', 'E001', 'Bundesliga', NOW() - INTERVAL '2 day', 'completed');
-
--- Favorites
--- Ensure user_id matches the one created above (it will be 1 if starting fresh)
-INSERT INTO user_favorites (user_id, team_id) VALUES (1, 'E001');
+INSERT INTO matches (id, home_team_id, away_team_id, match_time, status)
+VALUES 
+('EP25001', 'EP001', 'EP002', NOW() - INTERVAL '10 minutes', 'LIVE'),
+('LL25001', 'LL001', 'LL002', NOW() + INTERVAL '2 hours', 'SCHEDULED'),
+('BL25001', 'BL001', NULL, NOW() + INTERVAL '1 day', 'SCHEDULED');
