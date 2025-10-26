@@ -1,0 +1,15 @@
+{
+  "MATCH_1": [
+    { "minute": "1'", "line": "Kick-off! The first match simulation begins." },
+    { "minute": "3'", "line": "Team A passes the ball confidently in midfield." },
+    { "minute": "5'", "line": "A quick break down the wing by Team B, but the cross is cleared." },
+    { "minute": "8'", "line": "GOAL! Team A scores with a powerful header from a corner!" },
+    { "minute": "10'", "line": "Team B looks to respond immediately after conceding." }
+  ],
+  "MATCH_2": [
+    { "minute": "1'", "line": "The second match simulation is underway!" },
+    { "minute": "2'", "line": "Early pressure from the home side." },
+    { "minute": "6'", "line": "Long range shot goes just wide of the post." },
+    { "minute": "9'", "line": "YELLOW CARD! A tactical foul stops the counter-attack." }
+  ]
+}
