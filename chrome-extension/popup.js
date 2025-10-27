@@ -532,14 +532,14 @@ async function unfollowTeam(teamId, buttonEl) {
 // --- Rendering Functions ---
 
 // Render Matches - Includes filter, data attributes, placeholders
-function renderMatches(matchList, listElementId, filter) {
+// --- MODIFIED: renderMatches accepts and uses leagueFilter correctly for BOTH teams ---
+function renderMatches(matchList, listElementId, statusFilter, leagueFilter) {
     const listEl = document.getElementById(listElementId);
     listEl.innerHTML = ''; // Clear previous content
 
     const now = new Date();
     let filteredList = [];
 
-    // Map status for filtering
     const statusMap = {
         'LIVE': 'live',
         'HALF_TIME': 'live',
@@ -551,17 +551,10 @@ function renderMatches(matchList, listElementId, filter) {
 
     // Apply BOTH filters
     filteredList = matchList.filter(m => {
-        // League Filter
-        // Check both home and away team leagues if the match object has league_id directly
-        // If not, check the team objects if they are nested (depends on backend structure)
-        // Assuming backend adds league_id at the match level based on home team
-        if (leagueFilter !== 'ALL' && m.league_id !== leagueFilter) {
-             // Let's refine: Check if EITHER team is in the selected league
-             // This requires league_id on BOTH teams or fetching teams separately.
-             // Assuming simple filter based on home team's league_id for now.
-             // If your backend returns league_id per match (e.g., based on home team), this is fine.
-             // If not, you might need to adjust backend or do more complex filtering here.
-             return false;
+        // League Filter: Check if EITHER team belongs to the selected league
+        const leagueMatch = (leagueFilter === 'ALL') || (m.home_league_id === leagueFilter) || (m.away_league_id === leagueFilter);
+        if (!leagueMatch) {
+            return false; // Skip if neither team matches the league filter
         }
 
         // Status Filter
@@ -571,21 +564,24 @@ function renderMatches(matchList, listElementId, filter) {
         }
         return mappedStatus === statusFilter;
     });
-    // Sort upcoming matches by time (earliest first)
-    if (filter === 'upcoming') {
-        filteredList.sort((a, b) => new Date(a.match_time) - new Date(b.match_time));
+
+    // Sorting (remains the same)
+    if (statusFilter === 'upcoming') {
+        filteredList.sort((a, b) => new Date(a.match_time) - new Date(b.match_time)); // Ascending
+    } else { // live, finished
+        filteredList.sort((a, b) => new Date(b.match_time) - new Date(a.match_time)); // Descending
     }
-     // Sort live/finished matches maybe by time (most recent first?) - Optional
-     else if (filter === 'live' || filter === 'finished') {
-         filteredList.sort((a, b) => new Date(b.match_time) - new Date(a.match_time)); // Descending order
-     }
 
 
     if (filteredList.length === 0) {
-        listEl.innerHTML = `<div class="list-placeholder">No ${filter} matches found.</div>`;
+        // Get league name from dropdown for better placeholder text
+        const leagueSelect = document.getElementById(listElementId.includes('all') ? 'all-league-filter' : 'fav-league-filter');
+        const leagueName = leagueSelect.selectedOptions[0].text;
+        listEl.innerHTML = `<div class="list-placeholder">No ${statusFilter} matches found${leagueFilter !== 'ALL' ? ` in ${leagueName}` : ''}.</div>`;
         return;
     }
 
+    // Render cards (card creation logic remains the same)
     filteredList.forEach(match => {
         const card = document.createElement('div');
         card.className = 'match-card';
@@ -594,35 +590,32 @@ function renderMatches(matchList, listElementId, filter) {
         const isLive = match.status === 'LIVE' || match.status === 'HALF_TIME';
         const displayScore = match.score || (isLive ? '0-0' : 'vs');
         const liveDotHtml = isLive ? '<span class="live-dot">●</span> ' : '';
-        // Use a generic placeholder or specific logic for missing logos
-        const homeLogo = match.home_logo || ''; // Use empty string if no logo
+        const homeLogo = match.home_logo || '';
         const awayLogo = match.away_logo || '';
+        const latestTime = match.latestTime || (isLive ? '0\'' : '--\'');
 
         card.innerHTML = `
-            ${isLive ? '<span class="match-time" data-match-time>--\'</span>' : ''}
+            ${isLive ? `<span class="match-time" data-match-time>${latestTime}</span>` : ''}
             <div class="match-teams">
                 <div class="team home">
-                    ${homeLogo ? `<img src="${homeLogo}" alt="${match.home_team}">` : '<span style="width: 24px;"></span>' } <span>${match.home_team}</span>
+                    ${homeLogo ? `<img src="${homeLogo}" alt="${match.home_team}" onerror="this.style.display='none'; this.nextElementSibling.style.marginLeft='24px';">` : '<span style="width: 24px; display: inline-block;"></span>' }
+                    <span>${match.home_team}</span>
                 </div>
                 <span class="match-score" data-match-score>
                    ${liveDotHtml}${displayScore}
                 </span>
                 <div class="team away">
                     <span>${match.away_team || 'TBD'}</span>
-                    ${awayLogo ? `<img src="${awayLogo}" alt="${match.away_team || 'TBD'}">` : '<span style="width: 24px;"></span>' }
+                     ${awayLogo ? `<img src="${awayLogo}" alt="${match.away_team || 'TBD'}" onerror="this.style.display='none'; this.previousElementSibling.style.marginRight='24px';">` : '<span style="width: 24px; display: inline-block;"></span>' }
                 </div>
             </div>
             <div class="match-info">
                 ${new Date(match.match_time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })} (${match.status})
             </div>
         `;
-
-        card.addEventListener('click', () => {
-            showLiveFeed(match.id); // Pass only ID
-        });
-
+        card.addEventListener('click', () => { showLiveFeed(match.id); });
         listEl.appendChild(card);
-    });
+     });
 }
 
 // Render Team Search Results - Includes Follow/Unfollow Button Logic & Placeholders

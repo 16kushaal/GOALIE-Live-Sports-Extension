@@ -133,9 +133,9 @@ def get_matches():
             cur.execute(
                 """
                 SELECT m.id, m.status, m.score, m.match_time,
-                       m.home_team_id, m.away_team_id, -- Added team IDs
-                       t1.name as home_team, t1.logo_url as home_logo, t1.league_id, -- Added league_id
-                       t2.name as away_team, t2.logo_url as away_logo
+                       m.home_team_id, m.away_team_id,
+                       t1.name as home_team, t1.logo_url as home_logo, t1.league_id as home_league_id, -- Explicit home league
+                       t2.name as away_team, t2.logo_url as away_logo, t2.league_id as away_league_id  -- Explicit away league
                 FROM matches m
                 LEFT JOIN teams t1 ON m.home_team_id = t1.id
                 LEFT JOIN teams t2 ON m.away_team_id = t2.id
@@ -170,9 +170,9 @@ def get_my_matches():
              cur.execute(
                 """
                 SELECT m.id, m.status, m.score, m.match_time,
-                       m.home_team_id, m.away_team_id, -- Added team IDs
-                       t1.name as home_team, t1.logo_url as home_logo, t1.league_id, -- Added league_id
-                       t2.name as away_team, t2.logo_url as away_logo
+                       m.home_team_id, m.away_team_id,
+                       t1.name as home_team, t1.logo_url as home_logo, t1.league_id as home_league_id, -- Explicit home league
+                       t2.name as away_team, t2.logo_url as away_logo, t2.league_id as away_league_id  -- Explicit away league
                 FROM matches m
                 LEFT JOIN teams t1 ON m.home_team_id = t1.id
                 LEFT JOIN teams t2 ON m.away_team_id = t2.id
@@ -180,7 +180,7 @@ def get_my_matches():
                    OR m.away_team_id = ANY(SELECT team_id FROM user_favorite_teams WHERE user_id = %s)
                 ORDER BY m.match_time
                 """, (user_id, user_id)
-             )
+            )
              matches = [dict(row) for row in cur.fetchall()]
              for m in matches:
                 m['match_time'] = m['match_time'].isoformat()
