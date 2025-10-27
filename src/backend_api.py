@@ -125,17 +125,16 @@ def login():
 
 @app.route('/matches', methods=['GET'])
 def get_matches():
-    """Fetches ALL matches (for the 'All Matches' tab)."""
+    """Fetches ALL matches, including league and team IDs."""
     conn = get_db_connection()
-    if not conn:
-        return jsonify({"error": "Database connection failed"}), 500
-        
+    if not conn: return jsonify({"error": "Database connection failed"}), 500
     try:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT m.id, m.status, m.score, m.match_time,
-                       t1.name as home_team, t1.logo_url as home_logo,
+                       m.home_team_id, m.away_team_id, -- Added team IDs
+                       t1.name as home_team, t1.logo_url as home_logo, t1.league_id, -- Added league_id
                        t2.name as away_team, t2.logo_url as away_logo
                 FROM matches m
                 LEFT JOIN teams t1 ON m.home_team_id = t1.id
@@ -144,49 +143,79 @@ def get_matches():
                 """
             )
             matches = [dict(row) for row in cur.fetchall()]
-            for m in matches: # Convert datetime to string
+            for m in matches:
                 m['match_time'] = m['match_time'].isoformat()
             return jsonify(matches)
     except Exception as e:
         logger.error(f"Error fetching matches: {e}")
         return jsonify({"error": "Failed to fetch matches"}), 500
     finally:
-        conn.close()
+        if conn: conn.close()
+
 
 @app.route('/my-matches', methods=['GET'])
-@jwt_required() # This route is now protected
+@jwt_required()
 def get_my_matches():
-    """Fetches ONLY favorite matches (for the 'Favorites' tab)."""
-    user_id = get_jwt_identity() # Get user ID from their token
-    
+    """Fetches ONLY favorite matches, including league and team IDs."""
+    user_id = get_jwt_identity()
     conn = get_db_connection()
-    if not conn:
-        return jsonify({"error": "Database connection failed"}), 500
-        
+    if not conn: return jsonify({"error": "Database connection failed"}), 500
     try:
         with conn.cursor() as cur:
-            cur.execute(
+             # First, get the IDs of the teams the user follows
+             cur.execute("SELECT team_id FROM user_favorite_teams WHERE user_id = %s", (user_id,))
+             followed_team_ids = {row['team_id'] for row in cur.fetchall()} # Use a set for efficient lookup
+
+             # Then, fetch matches involving those teams
+             cur.execute(
                 """
                 SELECT m.id, m.status, m.score, m.match_time,
-                       t1.name as home_team, t1.logo_url as home_logo,
+                       m.home_team_id, m.away_team_id, -- Added team IDs
+                       t1.name as home_team, t1.logo_url as home_logo, t1.league_id, -- Added league_id
                        t2.name as away_team, t2.logo_url as away_logo
                 FROM matches m
-                JOIN teams t1 ON m.home_team_id = t1.id
-                JOIN teams t2 ON m.away_team_id = t2.id
-                WHERE m.home_team_id IN (SELECT team_id FROM user_favorite_teams WHERE user_id = %s)
-                   OR m.away_team_id IN (SELECT team_id FROM user_favorite_teams WHERE user_id = %s)
+                LEFT JOIN teams t1 ON m.home_team_id = t1.id
+                LEFT JOIN teams t2 ON m.away_team_id = t2.id
+                WHERE m.home_team_id = ANY(SELECT team_id FROM user_favorite_teams WHERE user_id = %s)
+                   OR m.away_team_id = ANY(SELECT team_id FROM user_favorite_teams WHERE user_id = %s)
                 ORDER BY m.match_time
                 """, (user_id, user_id)
-            )
-            matches = [dict(row) for row in cur.fetchall()]
-            for m in matches:
+             )
+             matches = [dict(row) for row in cur.fetchall()]
+             for m in matches:
                 m['match_time'] = m['match_time'].isoformat()
-            return jsonify(matches)
+
+             # Return both matches and the set of followed IDs
+             # The frontend needs the followed IDs to correctly update the search tab buttons
+             return jsonify({
+                 "matches": matches,
+                 "followed_team_ids": list(followed_team_ids) # Convert set back to list for JSON
+             })
     except Exception as e:
         logger.error(f"Error fetching my-matches: {e}")
         return jsonify({"error": "Failed to fetch matches"}), 500
     finally:
-        conn.close()
+        if conn: conn.close()
+
+# --- ADD THIS NEW ENDPOINT ---
+# It's better for the frontend to fetch the followed team IDs directly
+@app.route('/my-teams', methods=['GET'])
+@jwt_required()
+def get_my_teams():
+    """Fetches the IDs of teams the user follows."""
+    user_id = get_jwt_identity()
+    conn = get_db_connection()
+    if not conn: return jsonify({"error": "Database connection failed"}), 500
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT team_id FROM user_favorite_teams WHERE user_id = %s", (user_id,))
+            followed_team_ids = [row['team_id'] for row in cur.fetchall()]
+            return jsonify(followed_team_ids)
+    except Exception as e:
+        logger.error(f"Error fetching my-teams: {e}")
+        return jsonify({"error": "Failed to fetch followed teams"}), 500
+    finally:
+        if conn: conn.close()
 
 
 @app.route('/teams', methods=['GET'])
@@ -228,6 +257,8 @@ def follow_team():
         return jsonify({"error": "Could not follow team"}), 500
     finally:
         conn.close()
+
+        
 @app.route('/unfollow', methods=['DELETE']) # Use DELETE method
 @jwt_required()
 def unfollow_team():
