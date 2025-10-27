@@ -228,6 +228,39 @@ def follow_team():
         return jsonify({"error": "Could not follow team"}), 500
     finally:
         conn.close()
+@app.route('/unfollow', methods=['DELETE']) # Use DELETE method
+@jwt_required()
+def unfollow_team():
+    user_id = get_jwt_identity()
+    team_id = request.json.get('team_id')
+
+    if not team_id:
+        return jsonify({"error": "team_id required"}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM user_favorite_teams WHERE user_id = %s AND team_id = %s",
+                (user_id, team_id)
+            )
+            conn.commit()
+            # Check if any row was actually deleted
+            if cur.rowcount > 0:
+                logger.info(f"User {user_id} unfollowed team {team_id}")
+                return jsonify({"message": f"Successfully unfollowed team {team_id}"}), 200
+            else:
+                logger.warning(f"User {user_id} tried to unfollow team {team_id}, but was not following.")
+                return jsonify({"message": "Not following this team"}), 200 # Still OK, just nothing changed
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Unfollow error: {e}")
+        return jsonify({"error": "Could not unfollow team"}), 500
+    finally:
+        conn.close()
 
 # --- MODIFIED: WebSocket Handlers ---
 # We will store the user's ID on their socket connection
@@ -310,18 +343,72 @@ def handle_snippet_message(data):
         match_id = data['match_id']
         room = f"match_{match_id}"
         logger.info(f"Emitting 'new_snippet' to room {room}")
-        socketio.emit('new_snippet', data, room=room) # <-- Use room=room
+        socketio.emit('new_snippet', data, room=room) # CORRECT: Use room=room
     except Exception as e:
         logger.error(f"Error handling snippet: {e}")
 
 def handle_event_message(data):
+    """
+    Handles incoming match events from Kafka.
+    Updates DB score on GOAL events.
+    Emits the event data via WebSocket.
+    """
     try:
-        match_id = data['match_id']
+        match_id = data.get('match_id')
+        event_type = data.get('event_type')
+        score = data.get('score')
+        match_time = data.get('time') # Get the match minute
+
+        if not match_id:
+            logger.warning("Received event message without match_id")
+            return
+
+        # If it's a GOAL event, update the score in the database
+        if event_type == 'GOAL' and score:
+            conn = get_db_connection()
+            if conn:
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("UPDATE matches SET score = %s WHERE id = %s", (score, match_id))
+                        conn.commit()
+                    logger.info(f"Updated score for match {match_id} to {score}")
+                except Exception as e:
+                    conn.rollback()
+                    logger.error(f"Failed to update score for match {match_id}: {e}")
+                finally:
+                    conn.close()
+
+        # Update match status if it's kick-off, half-time, or full-time
+        new_status = None
+        if event_type == 'KICK_OFF':
+            new_status = 'LIVE'
+        elif event_type == 'HALF_TIME':
+            new_status = 'HALF_TIME' # Or keep it LIVE? Depends on desired UI
+        elif event_type == 'FULL_TIME':
+            new_status = 'FINISHED'
+        
+        if new_status:
+             conn = get_db_connection()
+             if conn:
+                 try:
+                     with conn.cursor() as cur:
+                         cur.execute("UPDATE matches SET status = %s WHERE id = %s", (new_status, match_id))
+                         conn.commit()
+                     logger.info(f"Updated status for match {match_id} to {new_status}")
+                 except Exception as e:
+                     conn.rollback()
+                     logger.error(f"Failed to update status for match {match_id}: {e}")
+                 finally:
+                     conn.close()
+
+
+        # Emit the event data (including score and time) to the WebSocket room
         room = f"match_{match_id}"
-        logger.info(f"Emitting 'new_event' to room {room}")
-        socketio.emit('new_event', data, room=room) # <-- Use room=room
+        logger.info(f"Emitting 'new_event' to room {room} with data: {data}")
+        socketio.emit('new_event', data, room=room)
+
     except Exception as e:
-        logger.error(f"Error handling event: {e}")
+        logger.error(f"Error handling event message: {e} | Data: {data}")
 
 # --- Main Execution ---
 

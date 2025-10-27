@@ -1,18 +1,10 @@
 [
-  {"match_id": "EP25001", "event_type": "YELLOW_CARD", "player": "Rodri", "time": "22'", "text": "Rodri gets a yellow for a tactical foul."},
-  {"match_id": "EP25001", "event_type": "GOAL", "player": "Saka", "time": "44'", "score": "1-0", "text": "GOOOOAL! Saka scores!"},
-  {"match_id": "EP25001", "event_type": "SUBSTITUTION", "player_off": "Trossard", "player_on": "Martinelli", "time": "65'"},
-  {"match_id": "EP25001", "event_type": "YELLOW_CARD", "player": "Rodri", "time": "22'", "text": "Rodri gets a yellow for a tactical foul."},
-  {"match_id": "EP25001", "event_type": "GOAL", "player": "Saka", "time": "44'", "score": "1-0", "text": "GOOOOAL! Saka scores!"},
-  {"match_id": "EP25001", "event_type": "SUBSTITUTION", "player_off": "Trossard", "player_on": "Martinelli", "time": "65'"},
-  {"match_id": "EP25001", "event_type": "YELLOW_CARD", "player": "Rodri", "time": "22'", "text": "Rodri gets a yellow for a tactical foul."},
-  {"match_id": "EP25001", "event_type": "GOAL", "player": "Saka", "time": "44'", "score": "1-0", "text": "GOOOOAL! Saka scores!"},
-  {"match_id": "EP25001", "event_type": "SUBSTITUTION", "player_off": "Trossard", "player_on": "Martinelli", "time": "65'"},
-  {"match_id": "EP25001", "event_type": "YELLOW_CARD", "player": "Rodri", "time": "22'", "text": "Rodri gets a yellow for a tactical foul."},
-  {"match_id": "EP25001", "event_type": "GOAL", "player": "Saka", "time": "44'", "score": "1-0", "text": "GOOOOAL! Saka scores!"},
-  {"match_id": "EP25001", "event_type": "SUBSTITUTION", "player_off": "Trossard", "player_on": "Martinelli", "time": "65'"},
-  {"match_id": "EP25001", "event_type": "YELLOW_CARD", "player": "Rodri", "time": "22'", "text": "Rodri gets a yellow for a tactical foul."},
-  {"match_id": "EP25001", "event_type": "GOAL", "player": "Saka", "time": "44'", "score": "1-0", "text": "GOOOOAL! Saka scores!"},
-  {"match_id": "EP25001", "event_type": "SUBSTITUTION", "player_off": "Trossard", "player_on": "Martinelli", "time": "65'"},
-  {"match_id": "LL25001", "event_type": "KICK_OFF", "time": "0'", "text": "The match has started!"}
+  {"match_id": "EP25001", "event_type": "KICK_OFF", "time": "0'", "score": "0-0", "text": "Match Kicks Off!"},
+  {"match_id": "EP25001", "event_type": "YELLOW_CARD", "player": "Rodri", "time": "22'", "score": "0-0", "text": "Rodri gets a yellow for a tactical foul."},
+  {"match_id": "EP25001", "event_type": "GOAL", "player": "Saka", "time": "44'", "score": "1-0", "text": "GOOOOAL! Saka scores for Arsenal!"},
+  {"match_id": "EP25001", "event_type": "HALF_TIME", "time": "45+2'", "score": "1-0", "text": "Half Time."},
+  {"match_id": "EP25001", "event_type": "SUBSTITUTION", "player_off": "Trossard", "player_on": "Martinelli", "time": "65'", "score": "1-0"},
+  {"match_id": "EP25001", "event_type": "GOAL", "player": "Haaland", "time": "78'", "score": "1-1", "text": "GOAL! Haaland equalises for City!"},
+  {"match_id": "EP25001", "event_type": "FULL_TIME", "time": "90+5'", "score": "1-1", "text": "Full Time."},
+  {"match_id": "LL25001", "event_type": "KICK_OFF", "time": "0'", "score": "0-0", "text": "El Clásico has started!"}
 ]

@@ -11,7 +11,10 @@
             --text-secondary: #818384;
             --border-color: #5a5a5c;
             --accent-color: #4f9bf5;
-            --live-color: #ff4500;
+            --live-color: #ff4500; /* Reddish-orange for live */
+            --event-goal: #2ebd59; /* Green for goal */
+            --event-card: #ffc107; /* Yellow for card */
+            --event-sub: #0dcaf0; /* Cyan for substitution */
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -21,7 +24,7 @@
             background-color: var(--bg-primary);
             color: var(--text-primary);
         }
-        
+
         /* --- Login View --- */
         #login-view { display: none; }
         .form-container { display: flex; flex-direction: column; gap: 12px; }
@@ -33,53 +36,80 @@
 
         /* --- Main App View --- */
         #main-app-view { display: none; }
-        .header { display: flex; justify-content: space-between; align-items: center; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .header h4 { margin: 0; }
         #logout-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8em; }
         #logout-btn:hover { color: var(--accent-color); }
-        
+
         .tab-nav { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 12px; }
         .tab-btn { flex: 1; padding: 10px; background: none; border: none; color: var(--text-secondary); font-weight: bold; cursor: pointer; border-bottom: 2px solid transparent; }
         .tab-btn.active { color: var(--text-primary); border-bottom-color: var(--accent-color); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        
+
         /* Sub-tabs */
         .sub-tab-nav { display: flex; gap: 8px; margin-bottom: 10px; }
         .sub-tab-btn { background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 4px 10px; font-size: 0.8em; cursor: pointer; }
         .sub-tab-btn.active { background: var(--accent-color); color: white; border-color: var(--accent-color); }
-        
+
         /* Match List */
         .match-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .match-card { background-color: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color); padding: 12px; cursor: pointer; }
+        .match-card { background-color: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color); padding: 12px; cursor: pointer; position: relative; } /* Added position relative */
         .match-card:hover { border-color: var(--accent-color); }
         .match-teams { display: flex; align-items: center; justify-content: space-between; font-weight: bold; }
-        .team { display: flex; align-items: center; gap: 8px; }
-        .team img { width: 24px; height: 24px; }
-        .match-score { font-size: 1.2em; }
-        .live-dot { color: var(--live-color); font-weight: bold; }
+        .team { display: flex; align-items: center; gap: 8px; flex: 1; /* Allow teams to take space */ }
+        .team img { width: 24px; height: 24px; object-fit: contain; }
+        .team.away { justify-content: flex-end; /* Align away team to the right */ }
+        .match-score { font-size: 1.2em; text-align: center; min-width: 50px; /* Give score space */ }
+        .live-dot { color: var(--live-color); font-weight: bold; font-size: 1.1em; margin-right: 2px; }
         .match-info { font-size: 0.8em; color: var(--text-secondary); margin-top: 8px; }
+        .match-time { /* Style for the live minute */
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
         .list-placeholder { color: var(--text-secondary); text-align: center; padding: 20px; }
-        
+
         /* Search Tab */
-        #search-input { width: calc(100% - 20px); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); margin-bottom: 10px; }
+        #search-input { width: calc(100% - 22px); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); margin-bottom: 10px; }
         .team-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--bg-tertiary); }
-        .follow-btn { background: var(--accent-color); color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 0.9em; }
-        .follow-btn:disabled { background: var(--bg-tertiary); color: var(--text-secondary); }
+        .team-list-item button { /* Style both follow/unfollow buttons */
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.9em;
+            min-width: 70px; /* Ensure buttons have consistent width */
+            text-align: center;
+        }
+        .follow-btn { background: var(--accent-color); color: white; }
+        .unfollow-btn { background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color);} /* Style for unfollow */
+        .follow-btn:disabled, .unfollow-btn:disabled { background: var(--bg-tertiary); color: var(--text-secondary); cursor: default; opacity: 0.6; }
 
         /* Live Feed */
         #live-feed-view { display: none; }
-        .feed-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .feed-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 10px;}
         .feed-header h4 { margin: 0; }
         #back-to-matches { background: none; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px; padding: 4px 8px; cursor: pointer; }
-        #feed-list { list-style: none; padding: 0; margin-top: 10px; max-height: 250px; overflow-y: auto; }
-        li.feed-item { padding: 8px 10px; border-bottom: 1px solid var(--bg-tertiary); }
-        li.event { background: #4a4a01; font-weight: bold; }
-        li.snippet { font-style: italic; }
-        
+        #feed-list { list-style: none; padding: 0; margin-top: 0; max-height: 280px; overflow-y: auto; }
+        li.feed-item { padding: 8px 10px; border-bottom: 1px solid var(--bg-tertiary); font-size: 0.9em; }
+        li.feed-item:last-child { border-bottom: none; }
+        li.event { font-weight: bold; }
+        /* Specific event colors */
+        li.event.goal { color: var(--event-goal); }
+        li.event.card { color: var(--event-card); }
+        li.event.sub { color: var(--event-sub); }
+        li.snippet { font-style: italic; color: var(--text-secondary); }
+
     </style>
 </head>
 <body>
-    
+
     <div id="login-view">
         <div id="register-form" class="form-container" style="display: none;">
             <h3>Create Account</h3>
@@ -102,8 +132,8 @@
     <div id="main-app-view">
         <div class="header">
             <h4>Live Snippets</h4>
-            <button id="logout-btn">Log Out &rarr;</button> </div>
-        
+            <button id="logout-btn">Log Out &rarr;</button>
+        </div>
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="all-matches">All Matches</button>
             <button class="tab-btn" data-tab="favorites">Favorites</button>
@@ -139,7 +169,7 @@
             </div>
         </div>
     </div>
-    
+
     <div id="live-feed-view">
         <div class="feed-header">
             <h4 id="feed-header-title">Match Feed</h4>
