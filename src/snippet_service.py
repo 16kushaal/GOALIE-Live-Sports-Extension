@@ -14,8 +14,8 @@ PRODUCE_TOPIC = 'snippets_processed'
 GROUP_ID = 'snippet-group'
 
 # Batching settings
-BATCH_SIZE = 5       # Process after 5 messages
-BATCH_TIMEOUT_SECONDS = 10 # Or process after 10 seconds
+BATCH_SIZE = 10       # Process after 5 messages
+BATCH_TIMEOUT_SECONDS = 40 # Or process after 10 seconds
 
 # Configure Gemini
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
