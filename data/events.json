@@ -28,9 +28,9 @@
   {"match_id": "EP25001", "event_type": "FOUL", "time": "42'", "score": "1-0", "player": "Nicolas Jackson", "text": "Jackson foul on Marquinhos."},
   {"match_id": "EP25001", "event_type": "DEFENCE", "time": "43'", "score": "1-0", "player": "Fofana", "text": "Fofana strong tackle on Mbappé."},
   {"match_id": "EP25001", "event_type": "ADDED_TIME", "time": "45'", "score": "1-0", "text": "Two minutes added time."},
-  {"match_id": "EP25001", "event_type": "DEFENCE", "time": "45+1'", "score": "1-0", "player": "Caicedo", "text": "Caicedo vital block on Hakimi."},
-  {"match_id": "EP25001", "event_type": "HALF_TIME", "time": "45+2'", "score": "1-0", "text": "Half-time. Man City 1-0 Arsenal."},
-  {"match_id": "EP25001", "event_type": "SECOND_HALF_KICK_OFF", "time": "46'", "score": "1-0", "text": "Second half underway."},
+  {"match_id": "EP25001", "event_type": "DEFENCE", "time": "46'", "score": "1-0", "player": "Caicedo", "text": "Caicedo vital block on Hakimi."},
+  {"match_id": "EP25001", "event_type": "HALF_TIME", "time": "47'", "score": "1-0", "text": "Half-time. Man City 1-0 Arsenal."},
+  {"match_id": "EP25001", "event_type": "SECOND_HALF_KICK_OFF", "time": "48'", "score": "1-0", "text": "Second half underway."},
   {"match_id": "EP25001", "event_type": "DEFENCE", "time": "51'", "score": "1-0", "text": "Petrovic clears after miscommunication."},
   {"match_id": "EP25001", "event_type": "CHANCE", "time": "53'", "score": "1-0", "player": "Mudryk", "text": "Mudryk cut-back misses Nkunku."},
   {"match_id": "EP25001", "event_type": "GOAL", "time": "55'", "score": "1-1", "player": "Nkunku", "text": "GOAL! Nkunku equalises for Arsenal."},
@@ -60,10 +60,10 @@
   {"match_id": "EP25001", "event_type": "CHANCE", "time": "87'", "score": "1-1", "player": "Ramos", "text": "Ramos header just over."},
   {"match_id": "EP25001", "event_type": "GOAL", "time": "88'", "score": "2-1", "player": "Mbappé", "text": "GOAL! Mbappé volley for Man City."},
   {"match_id": "EP25001", "event_type": "ADDED_TIME", "time": "90'", "score": "2-1", "text": "Eight minutes added time."},
-  {"match_id": "EP25001", "event_type": "SUBSTITUTION", "time": "90+2'", "score": "2-1", "player_off": "Zaïre-Emery", "player_on": "Danilo Pereira", "text": "Man City sub: Pereira on, Zaïre-Emery off."},
-  {"match_id": "EP25001", "event_type": "YELLOW_CARD", "time": "90+3'", "score": "2-1", "player": "Petrovic", "text": "Yellow card for Petrovic (time-wasting)."},
-  {"match_id": "EP25001", "event_type": "CORNER", "time": "90+5'", "score": "2-1", "text": "Palmer shot deflected for corner."},
-  {"match_id": "EP25001", "event_type": "CHANCE", "time": "90+6'", "score": "2-1", "player": "Fofana", "text": "Fofana header over from last corner."},
-  {"match_id": "EP25001", "event_type": "FULL_TIME", "time": "90+8'", "score": "2-1", "text": "Full-time. Man City 2-1 Arsenal."}
+  {"match_id": "EP25001", "event_type": "SUBSTITUTION", "time": "92'", "score": "2-1", "player_off": "Zaïre-Emery", "player_on": "Danilo Pereira", "text": "Man City sub: Pereira on, Zaïre-Emery off."},
+  {"match_id": "EP25001", "event_type": "YELLOW_CARD", "time": "93'", "score": "2-1", "player": "Petrovic", "text": "Yellow card for Petrovic (time-wasting)."},
+  {"match_id": "EP25001", "event_type": "CORNER", "time": "95'", "score": "2-1", "text": "Palmer shot deflected for corner."},
+  {"match_id": "EP25001", "event_type": "CHANCE", "time": "96'", "score": "2-1", "player": "Fofana", "text": "Fofana header over from last corner."},
+  {"match_id": "EP25001", "event_type": "FULL_TIME", "time": "98'", "score": "2-1", "text": "Full-time. Man City 2-1 Arsenal."}
 
 ]

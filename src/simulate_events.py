@@ -6,7 +6,7 @@ from kafka import KafkaProducer
 KAFKA_BROKER = '127.0.0.1:9092'
 TOPIC = 'match_events'
 EVENTS_FILE = 'data/events.json'
-SIMULATION_SPEED_SECONDS = 15 # Events are less frequent
+SIMULATION_SPEED_SECONDS = 12 # Events are less frequent
 
 def get_producer():
     """Initializes and returns a Kafka Producer."""

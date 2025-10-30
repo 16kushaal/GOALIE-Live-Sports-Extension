@@ -79,13 +79,21 @@ def process_batch(batch, producer):
     print(f"Processing batch with {len(batch)} messages for {len(matches_data)} matches...")
 
     for match_id, lines in matches_data.items():
+        if not lines: # Skip if list is empty
+            continue
+            
         snippet = generate_snippet(lines)
         
+        # --- FIX: Get match time from the LAST line in the batch ---
+        latest_time = lines[-1].get('time') # e.g., '23''
+        # --- END FIX ---
+
         if snippet:
             snippet_data = {
                 "match_id": match_id,
                 "snippet": snippet,
-                "timestamp": int(time.time())
+                "timestamp": int(time.time()),
+                "time": latest_time  # --- FIX: Add the time to the message ---
             }
             print(f"Producing snippet for match {match_id}: {snippet}")
             producer.send(PRODUCE_TOPIC, value=snippet_data)

@@ -30,6 +30,7 @@ const API_URL = 'http://localhost:5000';
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if user is already logged in
     chrome.storage.local.get(['token'], (result) => {
         if (result.token) {
             userToken = result.token;
@@ -53,16 +54,17 @@ function showMainApp() {
     loginView.style.display = 'none';
     liveFeedView.style.display = 'none';
     mainAppView.style.display = 'block';
-    currentMatchData = null;
+    currentMatchData = null; // Reset current match when going back
 
+    // Ensure socket is connected and fetch data
     if (!currentSocket || !currentSocket.connected) {
         connectSocket(userToken);
     }
     // Fetch crucial data on showing main view
+    // *** FIX ***: Fetch favorite *teams* first, then matches
     fetchFavoriteTeamsAndUpdateIds().then(() => {
-        // Fetch matches *after* knowing which teams are favorites
-        fetchMatches();
-        fetchFavoriteMatches(); // Fetch the actual favorite matches
+        fetchMatches(); // Fetch all matches
+        fetchFavoriteMatches(); // Fetch the filtered favorite matches
         fetchTeams(); // Fetch all teams for search
     });
 }
@@ -70,7 +72,6 @@ function showMainApp() {
 
 function showLiveFeed(matchId) {
     // Find the full match data from our lists
-    // Combine search across both lists just in case
     currentMatchData = allMatches.find(m => m.id === matchId) || favoriteMatches.find(m => m.id === matchId);
 
     if (!currentMatchData) {
@@ -82,24 +83,27 @@ function showLiveFeed(matchId) {
     mainAppView.style.display = 'none';
     liveFeedView.style.display = 'block';
 
-    // Set header title
     const matchName = `${currentMatchData.home_team} vs ${currentMatchData.away_team || 'TBD'}`;
     feedHeaderTitle.textContent = matchName;
 
-    // Update live score/time in feed header based on currentMatchData
     const isLive = currentMatchData.status === 'LIVE' || currentMatchData.status === 'HALF_TIME';
     feedLiveDot.style.display = isLive ? 'inline-block' : 'none';
     // Find the latest time from the match card if available, otherwise default
     const cardTimeEl = document.querySelector(`.match-card[data-match-id="${matchId}"] [data-match-time]`);
-    feedMatchTime.textContent = cardTimeEl ? cardTimeEl.textContent : '--\'';
+    feedMatchTime.textContent = cardTimeEl ? cardTimeEl.textContent : (isLive ? "0'" : "--'"); // Default to 0' if live
     feedMatchScore.textContent = currentMatchData.score || (isLive ? '0-0' : '');
 
+    // Set Logos
+    feedHomeLogo.src = currentMatchData.home_logo || '';
+    feedHomeLogo.alt = currentMatchData.home_team;
+    feedHomeLogo.style.visibility = currentMatchData.home_logo ? 'visible' : 'hidden';
+    feedAwayLogo.src = currentMatchData.away_logo || '';
+    feedAwayLogo.alt = currentMatchData.away_team || 'TBD';
+    feedAwayLogo.style.visibility = currentMatchData.away_logo ? 'visible' : 'hidden';
 
-    // Join the WebSocket room
+
     if (currentSocket && currentSocket.connected) {
         console.log(`Attempting to join match ${matchId}`);
-        // Leave previous room if any? Depends on desired behavior.
-        // currentSocket.emit('leave_match', { match_id: previousMatchId });
         currentSocket.emit('join_match', { match_id: matchId });
         feedList.innerHTML = '<li class="feed-item">Waiting for updates...</li>';
     } else {
@@ -220,27 +224,25 @@ function setupMainAppListeners() {
     // Main Tab navigation
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            // Deactivate all sibling buttons and content
             btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-            // Activate clicked button and corresponding content
             btn.classList.add('active');
             const tabContent = document.getElementById(`tab-${btn.dataset.tab}`);
             if (tabContent) {
                 tabContent.classList.add('active');
 
-                // Re-render lists when switching tabs to apply current filter
+                // Re-render lists when switching tabs to apply current filters
                 const activeFilterBtn = tabContent.querySelector('.sub-tab-btn.active');
-                if (activeFilterBtn) { // Check if sub-tabs exist
-                    const activeFilter = activeFilterBtn.dataset.filter;
-                    if (tabContent.id === 'tab-all-matches') {
-                        renderMatches(allMatches, 'all-matches-list', activeFilter);
-                    } else if (tabContent.id === 'tab-favorites') {
-                        renderMatches(favoriteMatches, 'fav-matches-list', activeFilter);
-                    }
+                const leagueFilterSelect = tabContent.querySelector('.league-filter select');
+
+                const statusFilter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'live';
+                const leagueFilter = leagueFilterSelect ? leagueFilterSelect.value : 'ALL';
+
+                if (tabContent.id === 'tab-all-matches') {
+                    renderMatches(allMatches, 'all-matches-list', statusFilter, leagueFilter);
+                } else if (tabContent.id === 'tab-favorites') {
+                    renderMatches(favoriteMatches, 'fav-matches-list', statusFilter, leagueFilter);
                 } else if (tabContent.id === 'tab-search') {
-                    // Trigger search render if needed, maybe based on current input value
                     const searchTerm = searchInput.value.toLowerCase().trim();
                     if (searchTerm) {
                         const filteredTeams = allTeams.filter(team => team.name.toLowerCase().includes(searchTerm));
@@ -256,17 +258,16 @@ function setupMainAppListeners() {
     });
 
 
-    // Sub-Tab navigation (remains the same, calls renderMatches with correct filters)
-    // Sub-Tab navigation (remains the same, calls renderMatches with correct filters)
+    // Sub-Tab navigation (delegated listener)
     document.querySelectorAll('.sub-tab-nav').forEach(nav => {
         nav.addEventListener('click', (e) => {
              if (!e.target.matches('.sub-tab-btn')) return;
-             // ... (logic to get filters and call renderMatches is unchanged) ...
              const btn = e.target;
              const statusFilter = btn.dataset.filter;
              const parentTabContent = btn.closest('.tab-content');
              parentTabContent.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
              btn.classList.add('active');
+             
              const leagueFilterSelect = parentTabContent.querySelector('.league-filter select');
              const leagueFilter = leagueFilterSelect ? leagueFilterSelect.value : 'ALL';
 
@@ -278,10 +279,9 @@ function setupMainAppListeners() {
         });
     });
 
-    // League Filter dropdown listeners (remains the same, calls renderMatches with correct filters)
+    // League Filter dropdown listeners
     [allLeagueFilter, favLeagueFilter].forEach(selectEl => {
         selectEl.addEventListener('change', (e) => {
-            // ... (logic to get filters and call renderMatches is unchanged) ...
              const leagueFilter = e.target.value;
              const parentTabContent = e.target.closest('.tab-content');
              const activeSubTabBtn = parentTabContent.querySelector('.sub-tab-btn.active');
@@ -298,15 +298,14 @@ function setupMainAppListeners() {
     // Search input listener
     searchInput.addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase().trim();
-        if (searchTerm.length < 1) { // Show placeholder if empty or just spaces
+        if (searchTerm.length < 1) {
             teamSearchListEl.innerHTML = '<div class="list-placeholder">Start typing to find teams.</div>';
             return;
         }
-        // Filter teams based on the search term
         const filteredTeams = allTeams.filter(team =>
             team.name.toLowerCase().includes(searchTerm)
         );
-        renderTeams(filteredTeams); // Render the filtered list
+        renderTeams(filteredTeams);
     });
 
     // Back button from live feed
@@ -332,34 +331,30 @@ async function fetchApi(endpoint, options = {}) {
         });
 
         // Handle successful DELETE (no content)
-        if (res.status === 200 && options.method === 'DELETE') {
+        if (res.ok && options.method === 'DELETE') {
              return { success: true }; // Indicate success
         }
-        // Handle other no content responses if needed
         if (res.status === 204 || res.headers.get('content-length') === '0') {
              return null;
         }
 
-        const data = await res.json(); // Try parsing JSON only if content expected
+        const data = await res.json(); 
 
         if (!res.ok) {
-            // Specific check for auth errors
              if (res.status === 401 || res.status === 422) {
                  console.warn("Auth error detected from API, logging out.");
-                 document.getElementById('logout-btn').click(); // Use existing logout logic
+                 document.getElementById('logout-btn').click();
              }
-            // Throw error with message from API if available
             throw new Error(data.message || data.error || `API Error: ${res.status}`);
         }
         return data;
 
     } catch (error) {
          console.error(`API Fetch Error (${endpoint}):`, error);
-         // Don't re-throw auth errors handled above
          if (!(error.message.includes("401") || error.message.includes("422"))) {
-             throw error; // Re-throw other errors
+             throw error;
          }
-         return null; // Return null on handled auth errors
+         return null;
     }
 }
 
@@ -370,10 +365,12 @@ async function fetchMatches() {
         const activeFilter = document.querySelector('#tab-all-matches .sub-tab-btn.active').dataset.filter;
         const leagueFilter = allLeagueFilter.value;
         renderMatches(allMatches, 'all-matches-list', activeFilter, leagueFilter);
-    } catch (err) { /* ... error handling ... */ }
+    } catch (err) {
+        allMatchesListEl.innerHTML = '<div class="list-placeholder">Could not load matches.</div>';
+    }
 }
 
-// --- NEW/REFINED: Fetch the actual list of followed team IDs ---
+// --- FIX: Use the dedicated /my-teams endpoint ---
 async function fetchFavoriteTeamsAndUpdateIds() {
      try {
          const followedIds = await fetchApi('/my-teams') || []; // Returns ['EP001', 'LL001', ...]
@@ -381,33 +378,31 @@ async function fetchFavoriteTeamsAndUpdateIds() {
          console.log("Fetched favoriteTeamIds:", favoriteTeamIds);
      } catch (err) {
           console.error("Failed to fetch favorite teams:", err);
-          // Keep potentially stale favoriteTeamIds on error? Or clear? Clearing might be safer.
-          // favoriteTeamIds.clear();
+          // Don't clear existing set on error
      }
 }
 
 async function fetchFavoriteMatches() {
-    // Current workaround: Fetch favorite matches and infer teams
     try {
-        // Fetch only matches involving favorite teams (backend handles filtering)
-        const favData = await fetchApi('/my-matches'); // Returns { matches: [], followed_team_ids: [] }
+        // Fetch only matches involving favorite teams
+        // This endpoint now returns { matches: [], followed_team_ids: [] }
+        const favData = await fetchApi('/my-matches'); 
 
-        // We primarily use favoriteTeamIds fetched separately, but update just in case
+        // Use the accurate list of IDs from the backend
         if (favData?.followed_team_ids) {
             favoriteTeamIds = new Set(favData.followed_team_ids);
         } else {
-            // If backend didn't send IDs (old version?), fetch them explicitly
+             // Fallback just in case
              await fetchFavoriteTeamsAndUpdateIds();
         }
 
         favoriteMatches = favData?.matches || []; // Store the filtered matches
 
-        // Render using current filters
         const activeFilter = document.querySelector('#tab-favorites .sub-tab-btn.active').dataset.filter;
         const leagueFilter = favLeagueFilter.value;
         renderMatches(favoriteMatches, 'fav-matches-list', activeFilter, leagueFilter);
+
     } catch (err) {
-        // Error logged by fetchApi
         favMatchesListEl.innerHTML = '<div class="list-placeholder">Could not load favorites.</div>';
     }
 }
@@ -417,9 +412,10 @@ async function fetchTeams() {
     try {
         allTeams = await fetchApi('/teams') || [];
         // Ensure favoriteTeamIds is up-to-date *before* rendering search results
-        await fetchFavoriteTeamsAndUpdateIds();
+        // This is already called in showMainApp, but we call it again
+        // here to be safe, especially if called from somewhere else.
+        await fetchFavoriteTeamsAndUpdateIds(); 
 
-        // Render search results based on current input ONLY if search tab is active
         if (document.getElementById('tab-search').classList.contains('active')) {
             const searchTerm = searchInput.value.toLowerCase().trim();
             if (searchTerm.length > 0) {
@@ -432,13 +428,26 @@ async function fetchTeams() {
             }
         }
     } catch (err) {
-        // Error logged by fetchApi
          teamSearchListEl.innerHTML = '<div class="list-placeholder">Could not load teams.</div>';
     }
 }
 
-// Follow Team API Call
-// --- MODIFIED: Follow/Unfollow Button Logic ---
+// --- FIX: More robust Follow/Unfollow button handling ---
+
+// Define the click handlers *outside* the functions
+// so they can be added and removed properly
+const followTeamHandler = (e) => {
+    e.stopPropagation();
+    const teamId = e.target.dataset.teamId;
+    followTeam(teamId, e.target);
+};
+
+const unfollowTeamHandler = (e) => {
+    e.stopPropagation();
+    const teamId = e.target.dataset.teamId;
+    unfollowTeam(teamId, e.target);
+};
+
 async function followTeam(teamId, buttonEl) {
     buttonEl.disabled = true;
     buttonEl.textContent = '...';
@@ -447,43 +456,30 @@ async function followTeam(teamId, buttonEl) {
             method: 'POST',
             body: JSON.stringify({ team_id: teamId })
         });
+        
+        favoriteTeamIds.add(teamId); // Update local state
+        
+        // Update button AFTER success
+        buttonEl.textContent = 'Unfollow';
+        buttonEl.className = 'unfollow-btn';
+        
+        // Remove old listener and add new one
+        buttonEl.removeEventListener('click', followTeamHandler);
+        buttonEl.addEventListener('click', unfollowTeamHandler);
 
-        // Update local state FIRST
-        favoriteTeamIds.add(teamId);
-
-        // Update button AFTER success using the NEW reference
-        const newButton = document.querySelector(`button[data-team-id="${teamId}"]`); // Re-select
-        if (newButton) {
-            newButton.textContent = 'Unfollow';
-            newButton.className = 'unfollow-btn';
-            // Replace listener correctly
-            const clonedButton = newButton.cloneNode(true); // Clone to remove old listener
-            newButton.parentNode.replaceChild(clonedButton, newButton);
-            clonedButton.addEventListener('click', (e) => { // Attach NEW listener
-                e.stopPropagation();
-                unfollowTeam(teamId, clonedButton);
-            });
-            clonedButton.disabled = false; // Ensure it's enabled
-        }
-
-        // Refresh favorite matches list in background
-        fetchFavoriteMatches();
+        fetchFavoriteMatches(); // Refresh favorite matches list
     } catch (err) {
         console.error('Failed to follow team:', err);
         buttonEl.textContent = 'Error';
-         setTimeout(() => { // Reset button visually on error
-             if (buttonEl && !favoriteTeamIds.has(teamId)) { // Check if still relevant
-                buttonEl.textContent = 'Follow';
-                buttonEl.className = 'follow-btn';
-                buttonEl.disabled = false;
-             }
+         setTimeout(() => { // Reset button on error
+             buttonEl.textContent = 'Follow';
+             buttonEl.className = 'follow-btn';
          }, 2000);
     } finally {
-         if (buttonEl) buttonEl.disabled = false; // Re-enable unless button was removed
+        buttonEl.disabled = false; // Always re-enable
     }
 }
 
-// Unfollow Team API Call
 async function unfollowTeam(teamId, buttonEl) {
     buttonEl.disabled = true;
     buttonEl.textContent = '...';
@@ -492,50 +488,37 @@ async function unfollowTeam(teamId, buttonEl) {
             method: 'DELETE',
             body: JSON.stringify({ team_id: teamId })
         });
+        
+        favoriteTeamIds.delete(teamId); // Update local state
+        
+        // Update button AFTER success
+        buttonEl.textContent = 'Follow';
+        buttonEl.className = 'follow-btn';
+        
+        // Remove old listener and add new one
+        buttonEl.removeEventListener('click', unfollowTeamHandler);
+        buttonEl.addEventListener('click', followTeamHandler);
 
-        // Update local state FIRST
-        favoriteTeamIds.delete(teamId);
-
-        // Update button AFTER success using the NEW reference
-        const newButton = document.querySelector(`button[data-team-id="${teamId}"]`); // Re-select
-        if (newButton) {
-            newButton.textContent = 'Follow';
-            newButton.className = 'follow-btn';
-            // Replace listener correctly
-            const clonedButton = newButton.cloneNode(true); // Clone
-            newButton.parentNode.replaceChild(clonedButton, newButton);
-            clonedButton.addEventListener('click', (e) => { // Attach NEW listener
-                e.stopPropagation();
-                followTeam(teamId, clonedButton);
-            });
-             clonedButton.disabled = false; // Ensure it's enabled
-        }
-
-        // Refresh favorite matches list in background
-        fetchFavoriteMatches();
+        fetchFavoriteMatches(); // Refresh favorite matches list
     } catch (err) {
         console.error('Failed to unfollow team:', err);
         buttonEl.textContent = 'Error';
-         setTimeout(() => { // Reset button visually on error
-              if (buttonEl && favoriteTeamIds.has(teamId)) { // Check if still relevant
-                buttonEl.textContent = 'Unfollow';
-                buttonEl.className = 'unfollow-btn';
-                buttonEl.disabled = false;
-             }
+         setTimeout(() => { // Reset button on error
+             buttonEl.textContent = 'Unfollow';
+             buttonEl.className = 'unfollow-btn';
          }, 2000);
     } finally {
-        if (buttonEl) buttonEl.disabled = false; // Re-enable unless button was removed
+        buttonEl.disabled = false; // Always re-enable
     }
 }
 
 
 // --- Rendering Functions ---
 
-// Render Matches - Includes filter, data attributes, placeholders
-// --- MODIFIED: renderMatches accepts and uses leagueFilter correctly for BOTH teams ---
+// --- FIX: Corrected League Filtering Logic ---
 function renderMatches(matchList, listElementId, statusFilter, leagueFilter) {
     const listEl = document.getElementById(listElementId);
-    listEl.innerHTML = ''; // Clear previous content
+    listEl.innerHTML = '';
 
     const now = new Date();
     let filteredList = [];
@@ -551,11 +534,16 @@ function renderMatches(matchList, listElementId, statusFilter, leagueFilter) {
 
     // Apply BOTH filters
     filteredList = matchList.filter(m => {
-        // League Filter: Check if EITHER team belongs to the selected league
-        const leagueMatch = (leagueFilter === 'ALL') || (m.home_league_id === leagueFilter) || (m.away_league_id === leagueFilter);
+        // --- FIX FOR LEAGUE FILTER ---
+        // Check if EITHER team belongs to the selected league
+        // (m.home_league_id and m.away_league_id come from the backend query)
+        const leagueMatch = (leagueFilter === 'ALL') || 
+                            (m.home_league_id === leagueFilter) || 
+                            (m.away_league_id === leagueFilter);
         if (!leagueMatch) {
-            return false; // Skip if neither team matches the league filter
+            return false; // Skip if neither team matches
         }
+        // --- END FIX ---
 
         // Status Filter
         const mappedStatus = statusMap[m.status] || 'upcoming';
@@ -565,23 +553,21 @@ function renderMatches(matchList, listElementId, statusFilter, leagueFilter) {
         return mappedStatus === statusFilter;
     });
 
-    // Sorting (remains the same)
+    // Sorting
     if (statusFilter === 'upcoming') {
         filteredList.sort((a, b) => new Date(a.match_time) - new Date(b.match_time)); // Ascending
-    } else { // live, finished
+    } else { 
         filteredList.sort((a, b) => new Date(b.match_time) - new Date(a.match_time)); // Descending
     }
 
-
     if (filteredList.length === 0) {
-        // Get league name from dropdown for better placeholder text
         const leagueSelect = document.getElementById(listElementId.includes('all') ? 'all-league-filter' : 'fav-league-filter');
         const leagueName = leagueSelect.selectedOptions[0].text;
         listEl.innerHTML = `<div class="list-placeholder">No ${statusFilter} matches found${leagueFilter !== 'ALL' ? ` in ${leagueName}` : ''}.</div>`;
         return;
     }
 
-    // Render cards (card creation logic remains the same)
+    // Render cards
     filteredList.forEach(match => {
         const card = document.createElement('div');
         card.className = 'match-card';
@@ -618,12 +604,11 @@ function renderMatches(matchList, listElementId, statusFilter, leagueFilter) {
      });
 }
 
-// Render Team Search Results - Includes Follow/Unfollow Button Logic & Placeholders
+// --- FIX: renderTeams uses new listener assignment ---
 function renderTeams(teamList) {
-    teamSearchListEl.innerHTML = ''; // Clear previous results
+    teamSearchListEl.innerHTML = '';
 
     if (teamList.length === 0) {
-        // Check if input is empty or just whitespace
         if (!searchInput.value.trim()) {
             teamSearchListEl.innerHTML = '<div class="list-placeholder">Start typing to find teams.</div>';
         } else {
@@ -632,12 +617,11 @@ function renderTeams(teamList) {
         return;
     }
 
-
     teamList.forEach(team => {
         const item = document.createElement('div');
         item.className = 'team-list-item';
 
-        const isFollowed = favoriteTeamIds.has(team.id); // Check the UPDATED set
+        const isFollowed = favoriteTeamIds.has(team.id); // Check *updated* set
         const buttonClass = isFollowed ? 'unfollow-btn' : 'follow-btn';
         const buttonText = isFollowed ? 'Unfollow' : 'Follow';
         const teamLogo = team.logo_url || '';
@@ -652,17 +636,10 @@ function renderTeams(teamList) {
 
         // Add correct click listener based on follow status
         const buttonEl = item.querySelector('button');
-        const teamId = team.id;
         if (isFollowed) {
-            buttonEl.addEventListener('click', (e) => {
-                e.stopPropagation();
-                unfollowTeam(teamId, e.target);
-            });
+            buttonEl.addEventListener('click', unfollowTeamHandler); // Use named handler
         } else {
-            buttonEl.addEventListener('click', (e) => {
-                e.stopPropagation();
-                followTeam(teamId, e.target);
-            });
+            buttonEl.addEventListener('click', followTeamHandler); // Use named handler
         }
 
         teamSearchListEl.appendChild(item);
@@ -677,39 +654,48 @@ function connectSocket(token) {
         return;
     }
     if (currentSocket) {
+        currentSocket.off('connect');
+        currentSocket.off('disconnect');
+        currentSocket.off('connect_error');
+        currentSocket.off('joined_room');
+        currentSocket.off('new_snippet');
+        currentSocket.off('new_event');
+        currentSocket.off('time_update'); // Add this
         currentSocket.disconnect();
     }
 
     console.log("Attempting to connect socket...");
     currentSocket = io(API_URL, {
-        query: { token } // Send token in query for auth
+        query: { token },
+        reconnectionAttempts: 3
     });
 
+    // --- Attach all event listeners ---
     currentSocket.on('connect', () => {
         console.log('Socket connected and authenticated with ID:', currentSocket.id);
+         if (liveFeedView.style.display === 'block' && currentMatchData) {
+             console.log(`Rejoining match room ${currentMatchData.id} after reconnect`);
+             currentSocket.emit('join_match', { match_id: currentMatchData.id });
+         }
     });
 
     currentSocket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
-        // If disconnected unexpectedly, maybe try to reconnect or force logout
-        if (reason === 'io server disconnect' || reason === 'transport error') {
-            // Consider showing an error or attempting reconnect
-        }
-        // No need to remove token here unless specifically needed
+         if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
+             console.warn("Unexpected socket disconnection.");
+         }
     });
 
     currentSocket.on('connect_error', (err) => {
-        console.error('Socket connection error:', err); // Log the full error
-        // Handle specific auth errors
-        if (err && (err.message.includes("Invalid token") || err.message.includes("No token") || err.message === "Unauthorized")) {
+        console.error('Socket connection error:', err);
+        const errorMsg = err.message || (err.data ? JSON.stringify(err.data) : 'Unknown connection error');
+        if (errorMsg.includes("Invalid token") || errorMsg.includes("No token") || errorMsg === "Unauthorized" || (err.data && err.data.message === "Unauthorized")) {
              console.warn("Auth error during connection, logging out.");
              document.getElementById('logout-btn').click();
         } else {
-             // Handle other connection errors (e.g., server down)
-             // Maybe update statusDiv in login view if that's visible?
              if (loginView.style.display === 'block') {
                  const errorDiv = document.getElementById('auth-error-login');
-                 errorDiv.textContent = 'Cannot connect to server.';
+                 errorDiv.textContent = 'Cannot connect to live update server.';
                  errorDiv.style.display = 'block';
              }
         }
@@ -719,61 +705,110 @@ function connectSocket(token) {
         console.log('Successfully joined room:', data.room);
     });
 
+    // --- 'new_snippet' handler ---
     currentSocket.on('new_snippet', (data) => {
-        console.log('New snippet:', data);
-        // Only add if viewing the correct match feed
+        // console.log('New snippet:', data);
         if (liveFeedView.style.display === 'block' && currentMatchData && data.match_id === currentMatchData.id) {
-             const time = data.time || currentMatchData.latestTime || ''; // Use time from snippet or last known time
+             const time = data.time || currentMatchData.latestTime || ''; // Use snippet time or last known time
              addFeedItem(`${time ? `<span class="time">[${time}]</span> ` : ''}${data.snippet}`, 'snippet');
+             
+             // Update latest time in feed header if this one is newer
+             if (time) feedMatchTime.textContent = time;
+             if (time && currentMatchData) currentMatchData.latestTime = time;
         }
     });
 
+    // --- 'time_update' handler (for continuous time) ---
+    currentSocket.on('time_update', (data) => {
+        // console.log('Time update:', data);
+        const { match_id, time } = data;
+        if (!match_id || !time) return;
+
+        // 1. Update internal state
+        let affectedMatch = allMatches.find(m => m.id === match_id) || favoriteMatches.find(m => m.id === match_id);
+        if (affectedMatch) {
+            affectedMatch.latestTime = time;
+        }
+        if (currentMatchData && currentMatchData.id === match_id) {
+            currentMatchData.latestTime = time;
+        }
+
+        // 2. Update live feed header (if viewing)
+        if (liveFeedView.style.display === 'block' && currentMatchData && currentMatchData.id === match_id) {
+            feedMatchTime.textContent = time;
+        }
+
+        // 3. Update main match card (if visible)
+        const matchCards = document.querySelectorAll(`.match-card[data-match-id="${match_id}"]`);
+        matchCards.forEach(card => {
+            const timeEl = card.querySelector('[data-match-time]');
+            if (timeEl) {
+                timeEl.textContent = time;
+            } else { // Add time element if match just went live
+                 const currentStatus = affectedMatch?.status;
+                 const isLiveNow = currentStatus === 'LIVE' || currentStatus === 'HALF_TIME';
+                 if (isLiveNow) {
+                     const newTimeEl = document.createElement('span');
+                     newTimeEl.className = 'match-time';
+                     newTimeEl.setAttribute('data-match-time', '');
+                     newTimeEl.textContent = time;
+                     card.prepend(newTimeEl);
+                 }
+            }
+        });
+    });
+
+
+    // --- 'new_event' handler (No re-rendering) ---
     currentSocket.on('new_event', (data) => {
-        console.log('New event:', data);
+        // console.log('New event:', data);
         const matchId = data.match_id;
+        if (!matchId) return;
+
         const score = data.score;
-        const matchTime = data.time; // This is the match minute like 44'
+        const matchTime = data.time;
         const eventType = data.event_type;
 
-        // Determine if status changed based on event type
         let newStatus = null;
         if (eventType === 'FULL_TIME') newStatus = 'FINISHED';
         else if (eventType === 'HALF_TIME') newStatus = 'HALF_TIME';
-        else if (eventType === 'KICK_OFF' || eventType === 'SECOND_HALF_KICK_OFF') newStatus = 'LIVE'; // Ensure it's marked live
+        else if (eventType === 'KICK_OFF' || eventType === 'SECOND_HALF_KICK_OFF') newStatus = 'LIVE';
 
         // --- Update Internal State FIRST ---
-        let matchChanged = false;
+        let matchChangedInState = false;
+        let affectedMatch = null;
+
         [allMatches, favoriteMatches].forEach(list => {
             const matchIndex = list.findIndex(m => m.id === matchId);
             if (matchIndex > -1) {
                 const match = list[matchIndex];
+                if (!affectedMatch) affectedMatch = match; 
+
                 if (score && match.score !== score) {
                     match.score = score;
-                    matchChanged = true;
+                    matchChangedInState = true;
                 }
                 if (newStatus && match.status !== newStatus) {
                     match.status = newStatus;
-                    matchChanged = true;
+                    matchChangedInState = true;
                 }
-                 // Store latest time seen for this match (useful for snippets)
-                 if (matchTime) {
+                if (matchTime) {
                     match.latestTime = matchTime;
-                    matchChanged = true; // Mark change to trigger potential re-render
-                 }
-                 // Update the match object in the array directly
-                 list[matchIndex] = match;
+                }
+                list[matchIndex] = match;
             }
         });
-        // Store latest time on currentMatchData too if viewing this match
-        if(currentMatchData && currentMatchData.id === matchId && matchTime) {
-            currentMatchData.latestTime = matchTime;
+        if(currentMatchData && currentMatchData.id === matchId) {
+            if (score) currentMatchData.score = score;
+            if (newStatus) currentMatchData.status = newStatus;
+            if (matchTime) currentMatchData.latestTime = matchTime;
         }
+        // --- END Internal State Update ---
 
-
-        // 1. Add event text to the live feed if viewing this match
+        // 1. Add event text to the live feed
         if (liveFeedView.style.display === 'block' && currentMatchData && matchId === currentMatchData.id) {
             const text = data.text || `${eventType} - ${data.player || ''}`;
-            const time = matchTime || '!';
+            const time = matchTime || currentMatchData.latestTime || '!';
 
             let eventClass = 'event';
             if (eventType === 'GOAL') eventClass += ' goal';
@@ -782,241 +817,72 @@ function connectSocket(token) {
 
             addFeedItem(`<span class="time">[${time}]</span> ${text}`, eventClass);
 
-            // Update the feed header score/time
             if (score) feedMatchScore.textContent = score;
-            if (matchTime) feedMatchTime.textContent = matchTime;
-            const isLiveNow = (newStatus === 'LIVE' || newStatus === 'HALF_TIME' || (!newStatus && currentMatchData?.status === 'LIVE'));
+            // if (matchTime) feedMatchTime.textContent = matchTime;
+            const currentStatus = newStatus || currentMatchData?.status;
+            const isLiveNow = (currentStatus === 'LIVE' || currentStatus === 'HALF_TIME');
             feedLiveDot.style.display = isLiveNow ? 'inline-block' : 'none';
         }
 
-        // 2. Update score, time, and status on the main match card(s)
+        // 2. Update all visible match cards
         const matchCards = document.querySelectorAll(`.match-card[data-match-id="${matchId}"]`);
 
         matchCards.forEach(card => {
             const scoreEl = card.querySelector('[data-match-score]');
             const timeEl = card.querySelector('[data-match-time]');
             const infoEl = card.querySelector('.match-info');
-            const liveDotEl = scoreEl ? scoreEl.querySelector('.live-dot') : null; // Live dot is inside scoreEl now
 
-             // Determine if the match should currently be considered live
-             const currentStatus = newStatus || allMatches.find(m=>m.id===matchId)?.status || favoriteMatches.find(m=>m.id===matchId)?.status;
-             const isLiveNow = currentStatus === 'LIVE' || currentStatus === 'HALF_TIME';
+            const currentStatus = affectedMatch?.status;
+            const isLiveNow = currentStatus === 'LIVE' || currentStatus === 'HALF_TIME';
 
-             // Update Score
-             if (scoreEl && score) {
+            if (scoreEl) {
+                 const displayScore = score || affectedMatch?.score || (isLiveNow ? '0-0' : 'vs');
                  const liveDotHtml = isLiveNow ? '<span class="live-dot">●</span> ' : '';
-                 scoreEl.innerHTML = `${liveDotHtml}${score}`;
-             } else if (scoreEl && !score && isLiveNow && !liveDotEl) {
-                 // Add live dot if match became live but score didn't change
-                 scoreEl.insertAdjacentHTML('afterbegin', '<span class="live-dot">●</span> ');
-             } else if (scoreEl && !isLiveNow && liveDotEl) {
-                 // Remove live dot if match finished
-                 liveDotEl.remove();
-             }
-
-
-            // Update Time
-            if (timeEl && matchTime) { // Update time if element exists
-                timeEl.textContent = matchTime;
-            } else if (!timeEl && matchTime && isLiveNow ) {
-                // Add time element if it doesn't exist but should (match is live)
-                 const newTimeEl = document.createElement('span');
-                 newTimeEl.className = 'match-time';
-                 newTimeEl.setAttribute('data-match-time', '');
-                 newTimeEl.textContent = matchTime;
-                 card.prepend(newTimeEl);
-            } else if (timeEl && !isLiveNow) {
-                 // Remove time element if match finished
-                 timeEl.remove();
+                 scoreEl.innerHTML = `${liveDotHtml}${displayScore}`;
             }
 
+            const latestTime = matchTime || affectedMatch?.latestTime;
+             if (latestTime) {
+                 if (timeEl) {
+                     timeEl.textContent = latestTime;
+                 } else if (isLiveNow) {
+                      const newTimeEl = document.createElement('span');
+                      newTimeEl.className = 'match-time';
+                      newTimeEl.setAttribute('data-match-time', '');
+                      newTimeEl.textContent = latestTime;
+                      card.prepend(newTimeEl);
+                 }
+             }
+             if (timeEl && !isLiveNow) {
+                 timeEl.remove();
+             }
 
-            // Update Status Text in Info Line
             if (infoEl && newStatus) {
-                 const originalMatchData = allMatches.find(m=>m.id===matchId) || favoriteMatches.find(m=>m.id===matchId);
-                 const timeString = new Date(originalMatchData?.match_time || Date.now()).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+                 const timeString = new Date(affectedMatch?.match_time || Date.now()).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
                  infoEl.textContent = `${timeString} (${newStatus})`;
             }
         });
 
-        // --- Re-render lists if a match status changed, to move it between sub-tabs ---
-         if (matchChanged) {
-             const activeAllFilterBtn = document.querySelector('#tab-all-matches .sub-tab-btn.active');
-             if (activeAllFilterBtn) {
-                 renderMatches(allMatches, 'all-matches-list', activeAllFilterBtn.dataset.filter);
-             }
-             const activeFavFilterBtn = document.querySelector('#tab-favorites .sub-tab-btn.active');
-             if (activeFavFilterBtn) {
-                 renderMatches(favoriteMatches, 'fav-matches-list', activeFavFilterBtn.dataset.filter);
-             }
-         }
-
+        // --- FIX: NO LONGER RE-RENDERS LISTS ---
+        // The lists will only re-render when the user clicks a tab or filter,
+        // which fixes the "blank screen" bug.
     });
 }
 
-// --- WebSocket Event Handlers ---
-// (on 'connect', 'disconnect', 'connect_error', 'joined_room' remain the same)
-// (on 'new_snippet' remains the same)
 
-// --- MODIFIED: on 'new_event' - Refined logic ---
-currentSocket.on('new_event', (data) => {
-    // console.log('New event:', data);
-    const matchId = data.match_id;
-    if (!matchId) return; // Ignore events without matchId
-
-    const score = data.score;
-    const matchTime = data.time; // Match minute like 44'
-    const eventType = data.event_type;
-
-    // Determine if status changed based on event type
-    let newStatus = null;
-    if (eventType === 'FULL_TIME') newStatus = 'FINISHED';
-    else if (eventType === 'HALF_TIME') newStatus = 'HALF_TIME';
-    // Treat KICK_OFF for either half as LIVE
-    else if (eventType === 'KICK_OFF' || eventType === 'SECOND_HALF_KICK_OFF') newStatus = 'LIVE';
-
-    // --- Update Internal State FIRST ---
-    let matchChangedInState = false; // Flag specifically for state changes
-    let affectedMatch = null;
-
-    [allMatches, favoriteMatches].forEach(list => {
-        const matchIndex = list.findIndex(m => m.id === matchId);
-        if (matchIndex > -1) {
-            const match = list[matchIndex];
-            affectedMatch = match; // Keep ref
-
-            if (score && match.score !== score) {
-                match.score = score;
-                matchChangedInState = true;
-            }
-            if (newStatus && match.status !== newStatus) {
-                match.status = newStatus;
-                matchChangedInState = true;
-            }
-            if (matchTime) { // Always update latest time
-                match.latestTime = matchTime;
-                // Consider if time update alone should trigger re-render maybe?
-                // matchChangedInState = true; // Uncomment if time update should force re-render
-            }
-            list[matchIndex] = match; // Update the array
-        }
-    });
-    // Update currentMatchData if viewing this match
-    if(currentMatchData && currentMatchData.id === matchId) {
-        if (score) currentMatchData.score = score;
-        if (newStatus) currentMatchData.status = newStatus;
-        if (matchTime) currentMatchData.latestTime = matchTime;
-    }
-    // --- END Internal State Update ---
-
-    // 1. Add event text to the live feed if viewing this match
-    if (liveFeedView.style.display === 'block' && currentMatchData && matchId === currentMatchData.id) {
-        const text = data.text || `${eventType} - ${data.player || ''}`;
-        const time = matchTime || currentMatchData.latestTime || '!'; // Use event time or latest known
-
-        let eventClass = 'event';
-        if (eventType === 'GOAL') eventClass += ' goal';
-        else if (eventType && eventType.includes('CARD')) eventClass += ' card';
-        else if (eventType === 'SUBSTITUTION') eventClass += ' sub';
-
-        addFeedItem(`<span class="time">[${time}]</span> ${text}`, eventClass);
-
-        // Update the feed header score/time/live status
-        if (score) feedMatchScore.textContent = score;
-        if (matchTime) feedMatchTime.textContent = matchTime;
-        const currentStatus = newStatus || currentMatchData?.status;
-        const isLiveNow = (currentStatus === 'LIVE' || currentStatus === 'HALF_TIME');
-        feedLiveDot.style.display = isLiveNow ? 'inline-block' : 'none';
-        // Update header logos too? They shouldn't change, but just in case
-        feedHomeLogo.src = currentMatchData.home_logo || '';
-        feedAwayLogo.src = currentMatchData.away_logo || '';
-        feedHomeLogo.style.visibility = currentMatchData.home_logo ? 'visible' : 'hidden';
-        feedAwayLogo.style.visibility = currentMatchData.away_logo ? 'visible' : 'hidden';
-    }
-
-    // 2. Update score, time, and status on the main match card(s)
-    const matchCards = document.querySelectorAll(`.match-card[data-match-id="${matchId}"]`);
-
-    matchCards.forEach(card => {
-        const scoreEl = card.querySelector('[data-match-score]');
-        const timeEl = card.querySelector('[data-match-time]');
-        const infoEl = card.querySelector('.match-info');
-
-        // Use the status from the updated internal state (affectedMatch)
-        const currentStatus = affectedMatch?.status; // Might be null if match not found in lists
-        const isLiveNow = currentStatus === 'LIVE' || currentStatus === 'HALF_TIME';
-
-        // Update Score & Live Dot
-        if (scoreEl) {
-             const displayScore = score || affectedMatch?.score || (isLiveNow ? '0-0' : 'vs');
-             const liveDotHtml = isLiveNow ? '<span class="live-dot">●</span> ' : '';
-             scoreEl.innerHTML = `${liveDotHtml}${displayScore}`;
-        }
-
-        // Update Time Element
-        const latestTime = matchTime || affectedMatch?.latestTime;
-        if (latestTime) {
-            if (timeEl) { // Update existing
-                timeEl.textContent = latestTime;
-            } else if (isLiveNow) { // Add if missing and should be there
-                 const newTimeEl = document.createElement('span');
-                 newTimeEl.className = 'match-time';
-                 newTimeEl.setAttribute('data-match-time', '');
-                 newTimeEl.textContent = latestTime;
-                 card.prepend(newTimeEl);
-            }
-        }
-        // Remove time element if match finished or not live
-        if (timeEl && !isLiveNow) {
-            timeEl.remove();
-        }
-
-        // Update Status Text in Info Line if status changed via this event
-        if (infoEl && newStatus) {
-            const timeString = new Date(affectedMatch?.match_time || Date.now()).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-            infoEl.textContent = `${timeString} (${newStatus})`;
-        }
-    });
-
-    // --- Re-render lists ONLY if a match status changed, to move it between sub-tabs ---
-     if (matchChangedInState && newStatus) { // Check the flag and if status actually changed
-         console.log(`Match ${matchId} status changed to ${newStatus}. Re-rendering relevant lists.`);
-
-         // Check which tab is active and re-render only that list if necessary
-         const activeAllTab = document.getElementById('tab-all-matches').classList.contains('active');
-         const activeFavTab = document.getElementById('tab-favorites').classList.contains('active');
-
-         if (activeAllTab) {
-              const activeAllFilterBtn = document.querySelector('#tab-all-matches .sub-tab-btn.active');
-              renderMatches(allMatches, 'all-matches-list', activeAllFilterBtn.dataset.filter, allLeagueFilter.value);
-         }
-         // Re-render favorites only if the active tab is favorites OR if the match was in favorites list
-         if (activeFavTab || favoriteTeamIds.has(affectedMatch?.home_team_id) || favoriteTeamIds.has(affectedMatch?.away_team_id) ) {
-              const activeFavFilterBtn = document.querySelector('#tab-favorites .sub-tab-btn.active');
-              // Ensure fav filter button exists before accessing dataset
-               if (activeFavFilterBtn){
-                   renderMatches(favoriteMatches, 'fav-matches-list', activeFavFilterBtn.dataset.filter, favLeagueFilter.value);
-               }
-         }
-     }
-});
-
-// Add item to the live feed list
 function addFeedItem(htmlContent, typeClass) {
     const li = document.createElement('li');
     li.className = `feed-item ${typeClass}`;
     li.innerHTML = htmlContent; // Use innerHTML to parse the <span> time tag
 
-    // Remove "Waiting" message if present
     const firstItem = feedList.firstElementChild;
     if (firstItem && firstItem.textContent.includes('Waiting')) {
         feedList.innerHTML = '';
     }
     feedList.prepend(li); // Add new item to the top
 
-    // Optional: Limit number of items in the feed
-    // const MAX_FEED_ITEMS = 50;
-    // while (feedList.childElementCount > MAX_FEED_ITEMS) {
-    //     feedList.removeChild(feedList.lastElementChild);
-    // }
+    const MAX_FEED_ITEMS = 100; // Limit feed length
+    while (feedList.childElementCount > MAX_FEED_ITEMS) {
+        feedList.removeChild(feedList.lastElementChild);
+    }
 }
