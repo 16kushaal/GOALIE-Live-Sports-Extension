@@ -881,6 +881,20 @@ function addFeedItem(htmlContent, typeClass) {
     }
     feedList.prepend(li); // Add new item to the top
 
+    // --- NEW: FADE-AWAY LOGIC ---
+    // Only apply fade-away to 'event' items, NOT 'snippet' items
+    if (typeClass.includes('event')) {
+        li.classList.add('fade-away');
+
+        // Remove the element from the DOM after the 7s CSS animation finishes
+        setTimeout(() => {
+            if (li.parentElement) {
+                li.parentElement.removeChild(li);
+            }
+        }, 7000); // This duration MUST match the CSS animation in popup.html
+    }
+    // --- END NEW LOGIC ---
+
     const MAX_FEED_ITEMS = 100; // Limit feed length
     while (feedList.childElementCount > MAX_FEED_ITEMS) {
         feedList.removeChild(feedList.lastElementChild);
