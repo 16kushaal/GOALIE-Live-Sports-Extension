@@ -61,7 +61,6 @@ function showMainApp() {
         connectSocket(userToken);
     }
     // Fetch crucial data on showing main view
-    // *** FIX ***: Fetch favorite *teams* first, then matches
     fetchFavoriteTeamsAndUpdateIds().then(() => {
         fetchMatches(); // Fetch all matches
         fetchFavoriteMatches(); // Fetch the filtered favorite matches
@@ -105,7 +104,7 @@ function showLiveFeed(matchId) {
     if (currentSocket && currentSocket.connected) {
         console.log(`Attempting to join match ${matchId}`);
         currentSocket.emit('join_match', { match_id: matchId });
-        feedList.innerHTML = '<li class="feed-item">Waiting for updates...</li>';
+        feedList.innerHTML = '<li class="feed-item">Loading history...</li>';
     } else {
         feedList.innerHTML = '<li class="feed-item">Error: Not connected. Please log in again.</li>';
     }
@@ -660,7 +659,8 @@ function connectSocket(token) {
         currentSocket.off('joined_room');
         currentSocket.off('new_snippet');
         currentSocket.off('new_event');
-        currentSocket.off('time_update'); // Add this
+        currentSocket.off('time_update'); 
+        currentSocket.off('history_snippets'); // --- NEW: Clear history listener
         currentSocket.disconnect();
     }
 
@@ -703,6 +703,28 @@ function connectSocket(token) {
 
     currentSocket.on('joined_room', (data) => {
         console.log('Successfully joined room:', data.room);
+    });
+
+    // --- NEW: Handle history load ---
+    currentSocket.on('history_snippets', (data) => {
+        const history = data.snippets || [];
+        // Only render if we are currently viewing this match
+        if (liveFeedView.style.display === 'block' && currentMatchData && history.length > 0) {
+             // 1. Clear "Loading..." or "Waiting..." text
+             if (feedList.firstElementChild && (feedList.firstElementChild.textContent.includes('Waiting') || feedList.firstElementChild.textContent.includes('Loading'))) {
+                feedList.innerHTML = '';
+             }
+
+             // 2. Add historical items (Oldest first in DB -> Prepend means we need to reverse, or append? 
+             // Logic: DB returns oldest first. `addFeedItem` uses prepend (adds to top). 
+             // So if we iterate oldest -> newest and call prepend, newest will end up on top.
+             history.forEach(item => {
+                 const time = item.time || '';
+                 // History items are 'snippets', not ephemeral events, so we use 'snippet' class
+                 // Note: We skip the fade-away animation for history items usually
+                 addFeedItem(`${time ? `<span class="time">[${time}]</span> ` : ''}${item.snippet}`, 'snippet');
+             });
+        }
     });
 
     // --- 'new_snippet' handler ---
@@ -807,13 +829,17 @@ function connectSocket(token) {
 
         // 1. Add event text to the live feed
         if (liveFeedView.style.display === 'block' && currentMatchData && matchId === currentMatchData.id) {
+            if (!['GOAL', 'YELLOW_CARD', 'RED_CARD'].includes(eventType)) {
+                return;
+            }
+            
             const text = data.text || `${eventType} - ${data.player || ''}`;
             const time = matchTime || currentMatchData.latestTime || '!';
 
             let eventClass = 'event';
             if (eventType === 'GOAL') eventClass += ' goal';
             else if (eventType && eventType.includes('CARD')) eventClass += ' card';
-            else if (eventType === 'SUBSTITUTION') eventClass += ' sub';
+            // else if (eventType === 'SUBSTITUTION') eventClass += ' sub';
 
             addFeedItem(`<span class="time">[${time}]</span> ${text}`, eventClass);
 
@@ -862,10 +888,6 @@ function connectSocket(token) {
                  infoEl.textContent = `${timeString} (${newStatus})`;
             }
         });
-
-        // --- FIX: NO LONGER RE-RENDERS LISTS ---
-        // The lists will only re-render when the user clicks a tab or filter,
-        // which fixes the "blank screen" bug.
     });
 }
 
