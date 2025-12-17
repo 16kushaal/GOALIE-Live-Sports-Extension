@@ -22,7 +22,7 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in .env file")
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
 def get_kafka_client():
     consumer = KafkaConsumer(
@@ -100,7 +100,7 @@ def process_batch(batch, producer):
 
 def main():
     consumer, producer = get_kafka_client()
-    print("Snippet service running...")
+    print("🟢 Snippet service running...")
     
     batch = []
     last_batch_time = time.time()

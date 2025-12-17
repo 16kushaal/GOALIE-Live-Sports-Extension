@@ -31,21 +31,21 @@ def load_model(path):
     """Loads the pre-trained joblib model."""
     try:
         model = joblib.load(path)
-        print(f"Successfully loaded model from {path}")
+        print(f"✅ Successfully loaded model from {path}")
         return model
     except FileNotFoundError:
-        print(f"Error: Model file not found at {path}")
+        print(f"❌ Error: Model file not found at {path}")
         print("Please make sure 'classifier.joblib' is in the 'model/' folder.")
         exit(1)
     except Exception as e:
-        print(f"Error loading model: {e}")
+        print(f"❌ Error loading model: {e}")
         exit(1)
 
 def main():
     consumer, producer = get_kafka_client()
     model = load_model(MODEL_FILE)
     
-    print("Classifier service running (using Joblib model)...")
+    print("✅ Classifier service running (using Joblib model)...")
     
     for message in consumer:
         try:
